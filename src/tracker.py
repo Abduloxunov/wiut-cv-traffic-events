@@ -31,6 +31,17 @@ def device_args():
     return {"device": 0, "half": True} if torch.cuda.is_available() else {"device": "cpu"}
 
 
+def track_frame(model, frame, idx, t, imgsz=1280, conf=0.1, tracker=DEFAULT_TRACKER):
+    """Detect + track one frame (tracker state persists in `model`). Rows as in iter_tracks."""
+    r = model.track(frame, imgsz=imgsz, conf=conf, classes=list(COCO_CLASSES), tracker=str(tracker),
+                    persist=True, verbose=False, **device_args())[0]
+    if r.boxes.id is None:
+        return []
+    ids, cls, confs = r.boxes.id.int().tolist(), r.boxes.cls.int().tolist(), r.boxes.conf.tolist()
+    boxes = np.round(r.boxes.xyxy.cpu().numpy(), 1).tolist()
+    return [[idx, round(t, 3), tid, COCO_CLASSES[c], round(cf, 3), *b] for tid, c, cf, b in zip(ids, cls, confs, boxes)]
+
+
 def iter_tracks(video_path, model, stride=3, imgsz=1280, conf=0.1, tracker=DEFAULT_TRACKER,
                 start_sec=0.0, end_sec=None, deadline=None):
     """Yield (frame_idx, t_sec, frame, rows) for every processed frame.
@@ -45,7 +56,6 @@ def iter_tracks(video_path, model, stride=3, imgsz=1280, conf=0.1, tracker=DEFAU
     last = n if end_sec is None else min(n, int(end_sec * fps))
     if first:
         cap.set(cv2.CAP_PROP_POS_FRAMES, first)
-    dev = device_args()
     model.predictor = None  # fresh tracker state for every video
     try:
         for idx in range(first, last):
@@ -56,17 +66,7 @@ def iter_tracks(video_path, model, stride=3, imgsz=1280, conf=0.1, tracker=DEFAU
             ok, frame = cap.read()
             if not ok or (deadline is not None and time.perf_counter() > deadline):
                 break
-            r = model.track(frame, imgsz=imgsz, conf=conf, classes=list(COCO_CLASSES), tracker=str(tracker),
-                            persist=True, verbose=False, **dev)[0]
-            rows = []
-            if r.boxes.id is not None:
-                ids = r.boxes.id.int().tolist()
-                cls = r.boxes.cls.int().tolist()
-                confs = r.boxes.conf.tolist()
-                boxes = np.round(r.boxes.xyxy.cpu().numpy(), 1).tolist()
-                t = round(idx / fps, 3)
-                rows = [[idx, t, tid, COCO_CLASSES[c], round(cf, 3), *b] for tid, c, cf, b in zip(ids, cls, confs, boxes)]
-            yield idx, idx / fps, frame, rows
+            yield idx, idx / fps, frame, track_frame(model, frame, idx, idx / fps, imgsz, conf, tracker)
     finally:
         cap.release()
 

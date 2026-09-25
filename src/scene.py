@@ -25,15 +25,17 @@ class Scene:
         self.walk_ok = self.mask({"crosswalk", "sidewalk", "island", "bus_stop"}, margin=PED_MARGIN)
 
     @classmethod
-    def for_video(cls, video_path, background=None, zones_path=ZONES, reference_path=REFERENCE):
-        """Align the reference zones to `video_path` (median background + SIFT homography)."""
-        cap = cv2.VideoCapture(str(video_path))
-        size = (int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)))
-        cap.release()
-        bg = background if background is not None else median_background(video_path)
+    def for_video(cls, video_path, background=None, **kwargs):
+        """Align the reference zones to `video_path` (its median background unless `background` is given)."""
+        return cls.from_image(background if background is not None else median_background(video_path), **kwargs)
+
+    @classmethod
+    def from_image(cls, image, zones_path=ZONES, reference_path=REFERENCE):
+        """Align the reference zones to a view of this camera (a frame or a background) by SIFT homography."""
+        size = image.shape[:2]
         ref = cv2.imread(str(reference_path))
         try:
-            H, _ = estimate_homography(ref, bg)
+            H, _ = estimate_homography(ref, image)
         except RuntimeError:
             # alignment failed (e.g. a very different view): fall back to scaling the reference to this size
             H = np.diag([size[1] / ref.shape[1], size[0] / ref.shape[0], 1.0])

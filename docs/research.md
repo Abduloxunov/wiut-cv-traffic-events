@@ -44,3 +44,37 @@ What we looked at, what we took from it. Accessed 24–25 Sep 2026.
 - CCTV accident data: ACCIDENT benchmark (2,027 real + 2,211 synthetic clips, annotations CC BY 4.0), TAD (344 videos),
   CADP, SO-TAD, TU-DAT. Dashcam sets (DoTA, CCD, DAD, BDD100K) are the wrong viewpoint.
 - Detectors: YOLO26 (AGPL-3.0), RF-DETR (Apache-2.0). Fire/smoke: D-Fire.
+
+## Accidents from fixed CCTV: ACCIDENT @ CVPR 2026 (zero-shot, real CCTV test set) — researched 25 Sep
+- [ACCIDENT benchmark paper](https://arxiv.org/abs/2604.09819): 2,027 real + 2,211 synthetic clips; tasks = impact
+  time, impact location, collision type; best baselines ~0.41 harmonic mean.
+- [Zero-shot VLM + tracking pipeline](https://arxiv.org/abs/2608.08867): Qwen3-VL-32B coarse-to-fine + YOLO11x + BoT-SORT,
+  0.504 (≈ +22% over the best baseline). Too large for our 5 GB / T4 budget; the idea (cheap candidates, expensive
+  verification only on windows) is what we reuse.
+- [SynCrash](https://arxiv.org/abs/2608.29759): VideoMAEv2-giant trained on CARLA synthetic clips, 0.40 (17th).
+  Key ablation: **physics heuristics (box overlap, trajectory intersection, approach velocity) beat complex relational
+  models on noisy CCTV**; object detection beat attention maps for localisation.
+- [Modular zero-shot pipeline](https://arxiv.org/abs/2604.09685) + [repo](https://github.com/Amey-Thakur/ACCIDENT-CVPR-2026)
+  (concepts only): impact time = strongest z-score peak (τ = 1.5) of mean absolute frame differences smoothed over 5
+  frames; location = weighted centroid of Farnebäck optical flow; type = CLIP prompts. Score 0.25.
+- [Two-pass VLM grounding](https://arxiv.org/abs/2605.01512): sparse-frame VLM pass for a coarse time, then tracking
+  in a ±2 s window to refine.
+
+## Collision anticipation
+- Nexar dashcam challenge (Kaggle 2025): top solutions = VideoMAEv2 clip classifiers
+  ([2nd place write-up](https://www.kaggle.com/competitions/nexar-collision-prediction/writeups/siuuuuuuu-2nd-place-solution-public-private-lb-vid)).
+  Dashcam viewpoint, needs thousands of labelled clips: not transferable to our fixed camera without data.
+- CCTV forecasting ([CADP](https://ar5iv.labs.arxiv.org/html/1809.05782)): DSA-LSTM warns ~1.4 s early at 80% recall.
+- Surrogate safety measures: TTC < 1.5 s serious conflict, 1.5–3 s slight
+  ([CCTV conflict analysis](https://www.researchsquare.com/article/rs-7894809/v1)); TTC false-alarms at urban
+  intersections where turning/yielding/braking break its constant-velocity assumption; practitioners rectify to a
+  bird's-eye view first. We use DRAC (deceleration rate to avoid crash) as the severity, which proved far more stable.
+
+## Open-vocabulary detection (obstacles, fire/smoke without training)
+- [YOLO-World](https://docs.ultralytics.com/models/yolo-world), [YOLOE-26](https://pyimagesearch.com/2026/08/24/yolo26-open-vocabulary-object-detection-with-yoloe-26/):
+  text-prompted detection ("debris", "tire", "cardboard box", "dog", "smoke", "fire") in the Ultralytics stack.
+
+## GitHub search (via `gh`)
+- Accident-detection repos for CCTV are mostly image classifiers or YOLO "accident" classes; the anticipation repos
+  (CCD/UString, DSTA, DRIVE) are dashcam-based. Nothing ready-made fits a fixed camera + temporal segments + our metric,
+  which confirms building our own rules on tracks.

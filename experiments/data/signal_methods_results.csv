@@ -1,0 +1,6 @@
+method,accuracy,C3897,C3902,C3905,red<->green errors,lit read as off
+hsv_fixed,0.6,0.1,0.725,0.975,0,43
+hsv_relative,0.9,0.875,0.9,0.925,0,6
+position,0.925,1.0,0.825,0.95,0,4
+hsv+position,0.95,1.0,0.875,0.975,0,1
+knn,0.625,0.125,0.875,0.875,0,40

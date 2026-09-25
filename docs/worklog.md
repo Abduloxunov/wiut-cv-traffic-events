@@ -112,3 +112,39 @@ OpenCV on Windows has no H.264 encoder). Frame times are identical to the origin
   the vehicle; people inside vehicle boxes ignored. Jaywalking v1 ignores people at the frame border.
   Proposal counts v0 → v1: failure_to_yield 42→29 (C3897), 37→30 (C3902), 22→18 (C3905); jaywalking 21→17, 23→22, 12→7.
 - C3897 tracking run was interrupted at 257/318 s (app closed); its proposals cover 0–257 s.
+
+**Traffic-light reader: 5 methods tested** (`experiments/signal_methods.py`, 120 hand-labelled crops of the vehicle
+head signal_5, 40 per video, half at random times and half near state changes)
+| method | accuracy | C3897 day | C3902 dusk | C3905 dusk | red↔green errors |
+|---|---|---|---|---|---|
+| fixed HSV thresholds | 0.600 | 0.100 | 0.725 | 0.975 | 0 |
+| relative colour (brightest saturated pixels per band) | 0.900 | 0.875 | 0.900 | 0.925 | 0 |
+| lamp position (brightest third of the head) | 0.925 | 1.000 | 0.825 | 0.950 | 0 |
+| **colour + position veto (production)** | **0.950** | **1.000** | **0.875** | **0.975** | **0** |
+| 1-NN on HSV thumbnails, leave-one-video-out | 0.625 | 0.125 | 0.875 | 0.875 | 0 |
+- Daylight amber looks reddish to a colour rule; the lamp position fixes it. A learned model fails on daylight
+  because only one daylight video exists. No method ever confused red with green.
+- Only 2 of 7 drawn heads face the camera (signal_4 pedestrian, signal_5 vehicle); gantry heads show their backs.
+- signal_5 governs stop_line_1: 343 of 351 stop-line crossings happened on green. Cycle ≈ 75–80 s (red ≈ 40 s,
+  green ≈ 35 s, flashing green, yellow); red+amber is shown before green (counted as red).
+- red_light review: 6 raw candidates → 3 were drivers moving off < 1 s before green (not violations) → rule now
+  requires red 0.5 s before and ≥ 1 s after the crossing; 2 genuine late runners remain (bus at 57.6 s and car at
+  132.5 s of C3897, both 2.5 s into red).
+
+**Part B risk estimator** (`src/risk.py`, replayed on saved tracks by `experiments/risk_on_tracks.py`; the samples
+have no accidents, so every alarm is false — the one number we can measure)
+| version | change | false alarms / hour | median score |
+|---|---|---|---|
+| v1 | time to closest approach between box centres | 89 | 0.80 |
+| v2 | ground points; ignore pairs already overlapping in the image | 138 | 0.69 |
+| v3 | per-pair persistence, true time-to-contact | 97 | 0.71 |
+| v4 | contact distance 0.35 / 0.25 | 162 / 283 | 0.64 / 0.53 |
+| v5 | ignore pairs on opposite one-way carriageways | 162 | 0.64 |
+| v6 | tracks ≥ 8 observations, ignore tiny far boxes | 178 | 0.63 |
+| **v7** | **severity = DRAC (closing² / 2·gap), 0.5 at DRAC 20 sizes/s² (above the 99.97th pct of normal traffic)** | **0** | **0.07** |
+- Visual check of the worst v6 false alarm: two far cars in one lane, one half hidden behind a truck; occlusion
+  shrinks and shifts its box, which looks like fast closing. Image-plane TTC is inherently noisy on this oblique view.
+- v7 keeps a continuous, ranked score (AP) and stays below 0.5 on normal traffic (max 0.44). Untested on real
+  crashes (none in the samples); the next improvement is a bird's-eye-view (metric) ground plane.
+- Part B cannot lower the score (all its terms are ≥ 0); the only risk is runtime, so RiskEstimator uses YOLO26s at
+  960 px every 3rd frame and stops inferring if it exceeds 0.25× the video length.

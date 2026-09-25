@@ -35,7 +35,36 @@ def boxes(scene, names=READABLE):
 
 
 def lamp_state(crop):
-    """'red' | 'yellow' | 'green' | 'off' for one signal-head crop (BGR)."""
+    """'red' | 'yellow' | 'green' | 'off' for one signal-head crop (BGR).
+
+    Colour decides, and the lamp position vetoes: in daylight an amber lamp looks reddish, but it is in the
+    middle of the head. On 120 hand-labelled crops (experiments/signal_methods.py): colour alone 90%,
+    position alone 93%, colour + position 95%, and no method ever confused red with green."""
+    colour, where = colour_state(crop), position_state(crop)
+    return colour if where in (colour, "off") else where
+
+
+POSITIONS = ("red", "yellow", "green")  # top, middle, bottom lamp of a vehicle head
+
+
+def position_state(crop, top_k=15, margin=15):
+    """Colour-blind reading: which third of the head holds the brightest saturated pixels."""
+    hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
+    s, v = hsv[..., 1], hsv[..., 2].astype(float)
+    bright = []
+    for rows in np.array_split(np.arange(crop.shape[0]), 3):
+        lamp = v[rows][s[rows] >= MIN_SAT]
+        bright.append(float(np.sort(lamp)[-top_k:].mean()) if lamp.size >= top_k else 0.0)
+    order = np.argsort(bright)[::-1]
+    if bright[order[0]] < MIN_SCORE:
+        return "off"
+    if bright[0] >= MIN_SCORE and bright[0] >= bright[2] + margin:
+        return "red"  # top lamp lit, alone or with amber (the red+amber phase before green is still red)
+    return POSITIONS[order[0]] if bright[order[0]] - bright[order[1]] >= margin else "off"
+
+
+def colour_state(crop):
+    """Colour reading: the band whose brightest saturated pixels clearly outshine the others."""
     if crop.size == 0:
         return "off"
     hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)

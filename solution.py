@@ -4,7 +4,7 @@ solution.py — the interface the organizers' harness imports (run_submission.py
 Part A: detect_events(video_path) -> [[start_sec, end_sec, label], ...]
     YOLO26 + ByteTrack over every 3rd frame -> tracks; hand-drawn scene zones aligned to this video
     (SIFT homography against the reference background) -> rule-based events per class.
-Part B: RiskEstimator — causal accident risk per frame (not implemented yet: returns 0).
+Part B: RiskEstimator — causal accident risk per frame from tracked pairs (deceleration-to-avoid-crash).
 
 All heavy code lives in src/; see README.md.
 """
@@ -35,9 +35,13 @@ IMGSZ = 1280               # detector input width; smaller loses far pedestrians
 # x duration for tracking; the harness decodes 4K for Part B at ~1.0-1.3x and rules + alignment take the rest.
 # Override only for local CPU experiments, e.g. PART_A_BUDGET=100.
 PART_A_BUDGET = float(os.environ.get("PART_A_BUDGET", 1.3))
+RISK_STRIDE = 3            # Part B updates at 10 Hz like Part A (risk.py velocity windows assume it)
+RISK_IMGSZ = 960           # Part B only needs near road users; far tiny boxes are ignored by risk.py anyway
+RISK_BUDGET = float(os.environ.get("RISK_BUDGET", 0.25))  # x duration of inference Part B may spend
 SEED = 0
 
 _model = None
+_risk_model = None
 
 
 def _seed_everything():
@@ -97,13 +101,44 @@ def detect_events(video_path: str) -> list[list]:
 
 
 class RiskEstimator:
-    """Part B (optional). Causal: step() sees frames in order and nothing else."""
+    """Part B. Causal: step() sees frames in order and nothing else (never the video file, never Part A output).
+
+    Every RISK_STRIDE-th frame: detect + track with a light model, then src/risk.py scores the most dangerous
+    pair of road users by deceleration-to-avoid-crash, calibrated so normal traffic stays below 0.5
+    (0 false alarms in 7.4 min of sample traffic). Other frames return the last score.
+    """
 
     def reset(self, meta: dict) -> None:
         # meta = {"video_id", "fps", "width", "height", "n_frames"}
         self.meta = meta
         self.last_score = 0.0
+        self.risk = None
+        self.frames = 0
+        self.t0 = time.perf_counter()
+        self.budget = RISK_BUDGET * meta["n_frames"] / max(meta["fps"], 1e-6)
+        self.model = _get_risk_model()
+        self.model.predictor = None  # fresh tracker for this video
 
     def step(self, frame: np.ndarray, t_sec: float) -> float:
         # frame: BGR uint8 (H, W, 3). Return P(accident starts within 5 s) in [0, 1].
+        from risk import CollisionRisk
+        from scene import Scene
+        from tracker import track_frame
+
+        idx = self.frames
+        self.frames += 1
+        if idx % RISK_STRIDE or time.perf_counter() - self.t0 > self.budget:
+            return self.last_score  # skip frames; and never risk the whole video's time budget
+        if self.risk is None:
+            self.risk = CollisionRisk(Scene.from_image(frame))  # zones aligned on the first frame seen
+        rows = track_frame(self.model, frame, idx, t_sec, imgsz=RISK_IMGSZ)
+        self.last_score, _ = self.risk.update(t_sec, rows)
         return self.last_score
+
+
+def _get_risk_model():
+    global _risk_model
+    if _risk_model is None:
+        from tracker import ROOT, load_model
+        _risk_model = load_model(ROOT / "weights" / "yolo26s.pt")
+    return _risk_model
