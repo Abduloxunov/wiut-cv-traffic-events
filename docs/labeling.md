@@ -5,10 +5,10 @@ scored with `python evaluate.py --pred predictions_samples.json --gt labels.json
 
 ## Workflow (about 1–1.5 h per 5-minute video)
 1. Open `tools/label_tool.html` (serve the repo: `python -m http.server 8765`, then http://localhost:8765/tools/label_tool.html).
-2. **Open video…** → pick the proxy (`proxies/C3897.mp4`, 1280 wide, same timing as the 4K original).
-   Rename is not needed, but the name in the export must match the real file name (`C3897.MP4`); the proxies share the
-   stem, so rename the key in `labels.json` or open the file renamed to `.MP4`.
-3. **Import…** → `runs/<video>/proposals.json` (rule suggestions, dashed).
+2. **Open video…** → pick the proxy `proxies/C3897.MP4` (1280 wide, same name, frame count and fps as the
+   4K original, so labels transfer 1:1). Proxies are made with FFmpeg:
+   `ffmpeg -i C3897.MP4 -vf scale=1280:-2 -c:v libx264 -preset veryfast -crf 26 -g 30 -an proxies/C3897.MP4`.
+3. **Import…** → `proxies/proposals_<video>.json` (rule suggestions, dashed).
 4. Pass 1, proposals: press **N** to jump to the next one, watch it, then **A** accept, or fix edges with **[** / **]**
    at the right frame, or **Del** delete.
 5. Pass 2, watch the whole video at 2× (**.** / **,** change speed). For anything missed: pick the class key,
