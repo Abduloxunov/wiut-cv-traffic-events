@@ -11,6 +11,12 @@ Work in progress for the elimination round. Detects traffic events in a fixed ro
 | `src/detect_track.py` | YOLO26 + ByteTrack over a video → `runs/<video>/tracks.csv` + annotated video |
 | `src/scene_stats.py` | EDA from tracks: road/person heatmaps, learned lane directions, counts over time |
 | `tools/zone_editor.html` | Draw the scene layout (road, crossings, stop lines, signals…) → `scene/zones.json` |
+| `tools/label_tool.html` | Label events on a video timeline → `labels.json` in the exact ground-truth format |
+| `src/align.py` | Maps the reference view to each video (SIFT + homography); framing shifts between recordings |
+| `src/check_zones.py` | Renders the zones and checks them against tracked traffic |
+| `src/propose_events.py` | Rule-based event proposals (baseline v0) from tracks + zones |
+| `src/bench_detectors.py` | Label-free comparison of detector / tracker configs |
+| `docs/` | Work log, methods comparison, research notes, labelling guide |
 | `scene/background.jpg` | Reference background (median of sample C3897) that zones are drawn on |
 | `weights/download.sh` | Fetches model weights |
 | `samples/` | Put the sample `.MP4` files here (not committed) |
