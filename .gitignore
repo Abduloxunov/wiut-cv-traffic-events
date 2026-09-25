@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Footage and generated outputs stay local
+samples/*
+!samples/.gitkeep
+runs/
+*.mp4
+*.MP4
+*.crdownload
+
+# Weights are fetched by weights/download.sh
+weights/*.pt
+
+# Per-video scratch images (only the reference background is committed)
+scene/bg_*.jpg
+scene/frame_*.jpg
+
+.DS_Store
+Thumbs.db
