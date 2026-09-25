@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Event Labeler</title>
+<style>
+  :root { --bg:#0f1115; --panel:#171a21; --line:#2a2f3a; --text:#e6e8ee; --muted:#9aa3b2; --accent:#4da3ff; --warn:#f59e0b; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.4 system-ui, "Segoe UI", sans-serif; height:100vh;
+         display:grid; grid-template-columns: 1fr 360px; grid-template-rows: 1fr auto; overflow:hidden; }
+  #stage { position:relative; background:#000; min-height:0; display:flex; align-items:center; justify-content:center; }
+  video { max-width:100%; max-height:100%; }
+  #hud { position:absolute; left:8px; top:8px; background:#000b; padding:4px 8px; border-radius:6px; font:12px ui-monospace, Consolas, monospace; }
+  #pending { position:absolute; right:8px; top:8px; background:#b45309; padding:4px 8px; border-radius:6px; display:none; }
+  #side { grid-row: 1 / span 2; grid-column: 2; background:var(--panel); border-left:1px solid var(--line); overflow:auto; padding:10px 12px; }
+  #bottom { grid-column:1; background:var(--panel); border-top:1px solid var(--line); padding:6px 8px; }
+  h1 { font-size:15px; margin:0 0 6px; }
+  h2 { font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin:14px 0 6px; }
+  button, select { background:#232834; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:4px 8px; font:inherit; cursor:pointer; }
+  button:hover { border-color:#3d4556; } button.on { border-color:var(--accent); background:#1d2a3d; }
+  .row { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  #classes { display:grid; grid-template-columns:1fr; gap:2px; }
+  .cls { display:flex; align-items:center; gap:6px; padding:3px 6px; border-radius:6px; cursor:pointer; border:1px solid transparent; }
+  .cls:hover { background:#1c2029; } .cls.on { border-color:var(--accent); background:#1a2233; }
+  .cls kbd, kbd { background:#262b36; border:1px solid var(--line); border-radius:4px; padding:0 4px; font-size:11px; min-width:18px; text-align:center; }
+  .sw { width:10px; height:10px; border-radius:2px; flex:none; }
+  #def { margin-top:6px; padding:6px 8px; border-left:3px solid var(--accent); background:#111722; color:var(--muted); font-size:12px; }
+  #segs { display:flex; flex-direction:column; gap:2px; max-height:34vh; overflow:auto; }
+  .seg { display:grid; grid-template-columns: 10px 1fr auto; gap:6px; align-items:center; padding:3px 6px; border-radius:6px; cursor:pointer; border:1px solid transparent; font-size:12px; }
+  .seg:hover { background:#1c2029; } .seg.sel { border-color:var(--accent); background:#1a2233; }
+  .seg.prop { opacity:.75; border-style:dashed; border-color:#555; }
+  .seg .t { font-family: ui-monospace, Consolas, monospace; color:var(--muted); }
+  #timeline { width:100%; height:190px; display:block; cursor:pointer; }
+  .muted { color:var(--muted); font-size:12px; }
+  #warn { color:var(--warn); font-size:12px; margin-top:4px; }
+  @media (max-width: 900px) { body { grid-template-columns: 1fr; grid-template-rows: 45vh auto auto; } #side { grid-row:auto; grid-column:1; } }
+</style>
+</head>
+<body>
+<div id="stage">
+  <video id="v" preload="auto"></video>
+  <div id="hud">no video</div>
+  <div id="pending">start set · press <b>O</b> to close</div>
+</div>
+
+<div id="bottom">
+  <div class="row" style="margin-bottom:4px">
+    <button id="openVid">Open video…</button><input id="vidFile" type="file" accept="video/*" hidden>
+    <span class="muted">fps</span><input id="fps" value="29.97" size="5" style="background:#10131a;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:3px 5px">
+    <span class="muted">speed</span>
+    <select id="rate"><option>0.25</option><option>0.5</option><option selected>1</option><option>2</option><option>4</option><option>8</option></select>
+    <span class="muted">zoom</span><input id="zoom" type="range" min="0" max="100" value="0" style="width:140px">
+    <span class="muted" id="zoomLbl">whole video</span>
+  </div>
+  <canvas id="timeline"></canvas>
+</div>
+
+<div id="side">
+  <h1>Event Labeler</h1>
+  <p class="muted" style="margin:0">Temporal labels in the exact <b>ground_truth.json</b> format of evaluate.py.</p>
+
+  <h2>Class <span class="muted">(key)</span></h2>
+  <div id="classes"></div>
+  <div id="def"></div>
+
+  <h2>Segments in this video (<span id="nseg">0</span>)</h2>
+  <div id="segs"></div>
+  <div id="warn"></div>
+  <div class="row" style="margin-top:6px">
+    <button id="setS">Start = now <kbd>[</kbd></button>
+    <button id="setE">End = now <kbd>]</kbd></button>
+    <button id="accept">Accept <kbd>A</kbd></button>
+    <button id="del">Delete <kbd>Del</kbd></button>
+  </div>
+
+  <h2>Files</h2>
+  <div class="row">
+    <button id="exportBtn">Export labels.json</button>
+    <button id="importBtn">Import labels / proposals…</button>
+    <input id="jsonFile" type="file" accept=".json" hidden multiple>
+  </div>
+  <p class="muted">Export holds every video labelled in this browser. Proposals (dashed) are suggestions: accept, fix or delete them. Only accepted segments are exported.</p>
+
+  <h2>Keys</h2>
+  <p class="muted">
+    <kbd>Space</kbd> play/pause · <kbd>←</kbd><kbd>→</kbd> 1 frame · <kbd>Shift</kbd>+arrows 1 s · <kbd>Ctrl</kbd>+arrows 5 s ·
+    <kbd>,</kbd><kbd>.</kbd> slower/faster · <kbd>I</kbd> start new segment · <kbd>O</kbd> end it ·
+    <kbd>[</kbd><kbd>]</kbd> move selected start/end to now · <kbd>N</kbd>/<kbd>P</kbd> next/previous segment ·
+    <kbd>A</kbd> accept proposal · <kbd>Del</kbd> delete · <kbd>Esc</kbd> cancel pending start / deselect ·
+    class key = class for new segments · <kbd>Shift</kbd>+class key = relabel the selected segment.
+    Click the timeline to seek; drag a segment edge to adjust it.
+  </p>
+</div>
+
+<script>
+const CLASSES = [
+  ["accident", "1", "#ef4444", "Contact between road users or with a fixed object. Start: first frame contact is visible. End: all involved stop moving or leave the frame."],
+  ["near_miss", "2", "#f97316", "Sharp braking or swerving to avoid a collision, no contact. Start: onset of the evasive action. End: road users clear of each other."],
+  ["red_light", "3", "#dc2626", "Vehicle crosses the stop line while its signal is red. Start: front crosses the stop line. End: leaves the intersection or the frame."],
+  ["wrong_way", "4", "#a855f7", "Vehicle moves against its lane's direction, incl. in the oncoming lane. Start: enters the opposing lane. End: back in a correct lane or out of frame."],
+  ["illegal_u_turn", "5", "#8b5cf6", "U-turn where markings or signs prohibit it. Start: starts turning. End: completes the turn."],
+  ["stopped_vehicle", "6", "#eab308", "Vehicle stationary on the carriageway >= 10 s, not queued at a signal. Start: vehicle stops. End: moves again or is removed."],
+  ["jaywalking", "7", "#22c55e", "Pedestrian on the carriageway outside a crossing. Start: steps onto the road. End: leaves the road."],
+  ["failure_to_yield", "8", "#14b8a6", "Vehicle drives through a crossing while a pedestrian is on it or stepping onto it. Start: vehicle enters the crossing. End: vehicle leaves it."],
+  ["illegal_turn", "9", "#6366f1", "Turn from the wrong lane or in a prohibited direction. Start: starts turning. End: completes the turn."],
+  ["solid_line_crossing", "0", "#facc15", "Lane change or manoeuvre across a solid marking. Start: wheel crosses the line. End: fully in the new lane."],
+  ["stop_line", "q", "#fb7185", "Vehicle stops past the stop line on red without entering the intersection. Start: vehicle stops. End: signal turns green."],
+  ["congestion", "w", "#3b82f6", "Standstill or crawling traffic across all lanes of a direction. Start: queue stops moving. End: queue clears."],
+  ["road_obstacle", "e", "#94a3b8", "Debris, animal or fallen object on the carriageway. Start: appears. End: removed."],
+  ["fire_smoke", "r", "#f43f5e", "Visible fire or smoke from a vehicle or on the road. Start: first visible smoke. End: clears or frame ends."],
+];
+const COLOR = Object.fromEntries(CLASSES.map(c => [c[0], c[2]]));
+const KEYMAP = Object.fromEntries(CLASSES.map(c => [c[1], c[0]]));
+const STORE = "event-labeler-v1";
+
+const $ = id => document.getElementById(id);
+const v = $("v"), tl = $("timeline"), tctx = tl.getContext("2d");
+let db = {};            // video name -> {duration, fps, segs:[{s,e,label,prop,score,why}]}
+let cur = null;         // current video name
+let cls = "jaywalking", sel = null, pendingStart = null;
+let view = { t0: 0, t1: 1 }, dragEdge = null;
+
+// ---------------- storage ----------------
+function load() { try { db = JSON.parse(localStorage.getItem(STORE) || "{}"); } catch (e) { db = {}; } }
+function save() { try { localStorage.setItem(STORE, JSON.stringify(db)); } catch (e) { /* blocked storage: export still works */ } }
+function segs() { return cur ? db[cur].segs : []; }
+const fps = () => parseFloat($("fps").value) || 29.97;
+const fmt = t => { const m = Math.floor(t / 60), s = t - m * 60; return `${m}:${s.toFixed(2).padStart(5, "0")}`; };
+
+// ---------------- classes panel ----------------
+function buildClasses() {
+  $("classes").innerHTML = "";
+  for (const [name, key, color] of CLASSES) {
+    const d = document.createElement("div");
+    d.className = "cls" + (name === cls ? " on" : "");
+    d.innerHTML = `<kbd>${key}</kbd><span class="sw" style="background:${color}"></span><span>${name}</span>`;
+    d.onclick = e => setClass(name, e.shiftKey);
+    $("classes").appendChild(d);
+  }
+  $("def").textContent = CLASSES.find(c => c[0] === cls)[3];
+}
+function setClass(name, relabel = false) {
+  cls = name;
+  if (relabel && sel && sel.label !== name) { sel.label = name; save(); }
+  buildClasses(); refresh();
+}
+
+// ---------------- segments ----------------
+function sortSegs() { segs().sort((a, b) => a.s - b.s || a.label.localeCompare(b.label)); }
+function refresh() {
+  sortSegs();
+  const list = $("segs"); list.innerHTML = "";
+  for (const g of segs()) {
+    const d = document.createElement("div");
+    d.className = "seg" + (g === sel ? " sel" : "") + (g.prop ? " prop" : "");
+    d.innerHTML = `<span class="sw" style="background:${COLOR[g.label]}"></span><span></span><span class="t"></span>`;
+    d.children[1].textContent = g.label + (g.prop ? " (proposal" + (g.why ? ": " + g.why : "") + ")" : "");
+    d.children[2].textContent = `${fmt(g.s)} → ${fmt(g.e)}`;
+    d.onclick = () => select(g, true);
+    list.appendChild(d);
+  }
+  $("nseg").textContent = segs().filter(g => !g.prop).length + (segs().some(g => g.prop) ? ` + ${segs().filter(g => g.prop).length} proposals` : "");
+  // same-class overlaps are invalid in the ground truth: the convention is one merged segment
+  const warn = [];
+  const acc = segs().filter(g => !g.prop);
+  for (let i = 0; i < acc.length; i++) for (let j = i + 1; j < acc.length; j++)
+    if (acc[i].label === acc[j].label && acc[j].s < acc[i].e && acc[i].s < acc[j].e) warn.push(`${acc[i].label} at ${fmt(acc[j].s)}`);
+  $("warn").textContent = warn.length ? "Overlapping same-class segments (merge them): " + warn.join(", ") : "";
+  drawTimeline();
+}
+function select(g, seek) {
+  sel = g;
+  if (g) { cls = g.label; buildClasses(); if (seek) v.currentTime = g.s; }
+  refresh();
+}
+function addSeg(s, e) {
+  if (!cur) return;
+  if (e < s) [s, e] = [e, s];
+  if (e - s < 1 / fps()) return;
+  const g = { s: +s.toFixed(3), e: +e.toFixed(3), label: cls, prop: false };
+  segs().push(g); save(); select(g, false);
+}
+function neighbour(dir) {
+  const list = segs(); if (!list.length) return;
+  const t = v.currentTime + dir * 0.01;
+  const g = dir > 0 ? list.find(x => x.s > t) : [...list].reverse().find(x => x.s < t - 0.05);
+  if (g) select(g, true);
+}
+
+// ---------------- timeline ----------------
+function sizeTimeline() {
+  const r = tl.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+  tl.width = r.width * dpr; tl.height = r.height * dpr; tctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawTimeline();
+}
+function updateView() {
+  const dur = cur ? db[cur].duration : 1, z = +$("zoom").value;
+  const span = z === 0 ? dur : Math.max(10, dur * Math.pow(1 - z / 100, 2));
+  let t0 = v.currentTime - span / 2; t0 = Math.max(0, Math.min(dur - span, t0));
+  view = { t0, t1: t0 + span };
+  $("zoomLbl").textContent = z === 0 ? "whole video" : `${span.toFixed(0)} s window`;
+}
+const LABEL_W = 120;
+const xOf = t => LABEL_W + (t - view.t0) / (view.t1 - view.t0) * (tl.clientWidth - LABEL_W - 4);
+const tOf = x => view.t0 + (x - LABEL_W) / (tl.clientWidth - LABEL_W - 4) * (view.t1 - view.t0);
+function drawTimeline() {
+  updateView();
+  const W = tl.clientWidth, H = tl.clientHeight, rowH = (H - 16) / CLASSES.length;
+  tctx.fillStyle = "#10131a"; tctx.fillRect(0, 0, W, H);
+  tctx.font = "10px system-ui";
+  CLASSES.forEach(([name], i) => {
+    const y = 16 + i * rowH;
+    tctx.fillStyle = i % 2 ? "#141821" : "#10131a"; tctx.fillRect(LABEL_W, y, W, rowH);
+    tctx.fillStyle = name === cls ? "#e6e8ee" : "#7d8696"; tctx.fillText(name, 4, y + rowH - 3);
+  });
+  // time ticks
+  const span = view.t1 - view.t0, step = [1, 2, 5, 10, 15, 30, 60, 120].find(s => span / s < 14) || 300;
+  tctx.fillStyle = "#7d8696";
+  for (let t = Math.ceil(view.t0 / step) * step; t <= view.t1; t += step) {
+    const x = xOf(t); tctx.fillRect(x, 0, 1, 16); tctx.fillText(fmt(t).replace(/\.\d+$/, ""), x + 2, 10);
+  }
+  for (const g of segs()) {
+    const i = CLASSES.findIndex(c => c[0] === g.label), y = 16 + i * rowH;
+    const x0 = xOf(g.s), x1 = Math.max(xOf(g.e), x0 + 2);
+    tctx.globalAlpha = g.prop ? 0.45 : 0.95; tctx.fillStyle = COLOR[g.label];
+    tctx.fillRect(x0, y + 1, x1 - x0, rowH - 2); tctx.globalAlpha = 1;
+    if (g === sel) { tctx.strokeStyle = "#fff"; tctx.lineWidth = 2; tctx.strokeRect(x0, y + 1, x1 - x0, rowH - 2); }
+  }
+  if (pendingStart !== null) {
+    const i = CLASSES.findIndex(c => c[0] === cls), y = 16 + i * rowH;
+    tctx.fillStyle = "#b45309aa"; tctx.fillRect(xOf(pendingStart), y + 1, xOf(v.currentTime) - xOf(pendingStart), rowH - 2);
+  }
+  const px = xOf(v.currentTime); tctx.fillStyle = "#4da3ff"; tctx.fillRect(px - 1, 0, 2, H);
+}
+function segAt(x, y) {
+  const rowH = (tl.clientHeight - 16) / CLASSES.length, i = Math.floor((y - 16) / rowH);
+  if (i < 0 || i >= CLASSES.length) return null;
+  const t = tOf(x), tol = 5 * (view.t1 - view.t0) / tl.clientWidth;
+  return segs().find(g => g.label === CLASSES[i][0] && t >= g.s - tol && t <= g.e + tol) || null;
+}
+tl.addEventListener("mousedown", e => {
+  if (!cur) return;
+  const g = segAt(e.offsetX, e.offsetY);
+  if (g) {
+    const tol = 6 * (view.t1 - view.t0) / tl.clientWidth, t = tOf(e.offsetX);
+    if (Math.abs(t - g.s) < tol) dragEdge = { g, edge: "s" };
+    else if (Math.abs(t - g.e) < tol) dragEdge = { g, edge: "e" };
+    select(g, !dragEdge);
+    return;
+  }
+  if (e.offsetX > LABEL_W) v.currentTime = Math.max(0, tOf(e.offsetX));
+});
+window.addEventListener("mousemove", e => {
+  if (!dragEdge) return;
+  const r = tl.getBoundingClientRect(), t = Math.max(0, Math.min(db[cur].duration, tOf(e.clientX - r.left)));
+  dragEdge.g[dragEdge.edge] = +t.toFixed(3); v.currentTime = t; refresh();
+});
+window.addEventListener("mouseup", () => { if (dragEdge) { if (dragEdge.g.e < dragEdge.g.s) [dragEdge.g.s, dragEdge.g.e] = [dragEdge.g.e, dragEdge.g.s]; save(); } dragEdge = null; });
+
+// ---------------- video ----------------
+$("openVid").onclick = () => $("vidFile").click();
+$("vidFile").onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  cur = f.name; v.src = URL.createObjectURL(f);
+  v.onloadedmetadata = () => {
+    db[cur] = db[cur] || { duration: v.duration, fps: fps(), segs: [] };
+    db[cur].duration = +v.duration.toFixed(3); save(); sel = null; refresh();
+  };
+};
+$("rate").onchange = () => (v.playbackRate = +$("rate").value);
+$("zoom").oninput = drawTimeline;
+function tick() {
+  if (cur) {
+    const f = Math.round(v.currentTime * fps());
+    $("hud").textContent = `${cur}  ${fmt(v.currentTime)}  frame ${f}  ${v.playbackRate}x  class: ${cls}`;
+    drawTimeline();
+  }
+  requestAnimationFrame(tick);
+}
+function step(dt) { v.pause(); v.currentTime = Math.max(0, Math.min(v.duration || 0, v.currentTime + dt)); }
+
+// ---------------- buttons ----------------
+$("setS").onclick = () => { if (sel) { sel.s = +v.currentTime.toFixed(3); if (sel.e < sel.s) [sel.s, sel.e] = [sel.e, sel.s]; save(); refresh(); } };
+$("setE").onclick = () => { if (sel) { sel.e = +v.currentTime.toFixed(3); if (sel.e < sel.s) [sel.s, sel.e] = [sel.e, sel.s]; save(); refresh(); } };
+$("accept").onclick = () => { if (sel) { sel.prop = false; save(); const next = segs().find(g => g.prop && g.s >= sel.s); refresh(); if (next) select(next, true); } };
+$("del").onclick = () => { if (sel) { db[cur].segs = segs().filter(g => g !== sel); sel = null; save(); refresh(); } };
+
+$("exportBtn").onclick = () => {
+  const out = {};
+  for (const [name, d] of Object.entries(db)) {
+    out[name] = { duration: d.duration, fps: d.fps, events: d.segs.filter(g => !g.prop).sort((a, b) => a.s - b.s).map(g => [g.s, g.e, g.label]) };
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 1)], { type: "application/json" }));
+  a.download = "labels.json"; a.click();
+};
+$("importBtn").onclick = () => $("jsonFile").click();
+$("jsonFile").onchange = async e => {
+  for (const f of e.target.files) {
+    const o = JSON.parse(await f.text());
+    const videos = o.videos || o;   // predictions / proposals use {"videos": {...}}, ground truth is flat
+    for (const [name, d] of Object.entries(videos)) {
+      db[name] = db[name] || { duration: d.duration || 0, fps: d.fps || fps(), segs: [] };
+      if (d.duration) db[name].duration = d.duration;
+      const isProposal = !!o.videos;
+      for (const ev of (d.events || d.proposals || [])) {
+        const [s, e, label, score, why] = ev;
+        if (!COLOR[label]) continue;
+        if (db[name].segs.some(g => g.label === label && Math.abs(g.s - s) < 0.05 && Math.abs(g.e - e) < 0.05)) continue;
+        db[name].segs.push({ s, e, label, prop: isProposal, score, why });
+      }
+    }
+  }
+  save(); refresh();
+};
+
+// ---------------- keyboard ----------------
+window.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+  const k = e.key;
+  if (k === " ") { e.preventDefault(); v.paused ? v.play() : v.pause(); }
+  else if (k === "ArrowRight" || k === "ArrowLeft") {
+    e.preventDefault(); const d = k === "ArrowRight" ? 1 : -1;
+    step(d * (e.ctrlKey ? 5 : e.shiftKey ? 1 : 1 / fps()));
+  }
+  else if (k === "i" || k === "I") { pendingStart = v.currentTime; $("pending").style.display = "block"; }
+  else if (k === "o" || k === "O") { if (pendingStart !== null) { addSeg(pendingStart, v.currentTime); pendingStart = null; $("pending").style.display = "none"; } }
+  else if (k === "Escape") { pendingStart = null; $("pending").style.display = "none"; select(null); }
+  else if (k === "[") $("setS").click();
+  else if (k === "]") $("setE").click();
+  else if (k === "a" || k === "A") $("accept").click();
+  else if (k === "Delete" || k === "Backspace") { e.preventDefault(); $("del").click(); }
+  else if (k === "n" || k === "N") neighbour(1);
+  else if (k === "p" || k === "P") neighbour(-1);
+  else if (k === "," || k === ".") {
+    const rates = [0.25, 0.5, 1, 2, 4, 8], i = rates.indexOf(v.playbackRate);
+    v.playbackRate = rates[Math.max(0, Math.min(rates.length - 1, i + (k === "." ? 1 : -1)))]; $("rate").value = String(v.playbackRate);
+  }
+  else {
+    // physical key, so Shift+digit still maps to the digit's class
+    const code = e.code.replace(/^Digit|^Key/, "").toLowerCase();
+    if (KEYMAP[code]) setClass(KEYMAP[code], e.shiftKey);
+  }
+});
+
+window.addEventListener("resize", sizeTimeline);
+load(); buildClasses(); sizeTimeline(); requestAnimationFrame(tick);
+</script>
+</body>
+</html>
