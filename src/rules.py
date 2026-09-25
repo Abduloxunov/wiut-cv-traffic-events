@@ -158,22 +158,142 @@ def wrong_way(df, scene):
     return segs
 
 
+# Which readable signal head governs each stop line. Verified from traffic: across the three samples 343 of 351
+# vehicles crossed stop_line_1 while signal_5 was green (the rest are red-light candidates).
+SIGNAL_FOR_STOP_LINE = {"stop_line_1": "signal_5"}
+RED_SETTLE = 0.5    # s the light must already be red, so a vehicle clearing on the change is not flagged
+RED_AHEAD = 1.0     # s the light must stay red after the crossing: drivers moving off just before green are not
+                    # red-light runners (review of the samples: 3 of 6 raw candidates were such early starts)
+PAST_LINE = 0.4     # a stop-line violator's front is at least this many box heights past the line
+
+
+def signal_timeline(states, name):
+    """(times, states) for one signal with 'off' samples filled from the last known state."""
+    s = states[["t_sec", name]].copy()
+    s[name] = s[name].where(s[name] != "off").ffill().fillna("off")
+    return s.t_sec.to_numpy(), s[name].to_numpy()
+
+
+def _state_at(times, states, t):
+    return states[max(0, np.searchsorted(times, t, side="right") - 1)]
+
+
+def _red_since(times, states, t):
+    """Seconds the light has been continuously red at time t (0 if it is not red)."""
+    i = max(0, np.searchsorted(times, t, side="right") - 1)
+    if states[i] != "red":
+        return 0.0
+    j = i
+    while j > 0 and states[j - 1] == "red":
+        j -= 1
+    return t - times[j]
+
+
+def _red_ahead(times, states, t):
+    """Seconds the light stays red after time t (0 if it is not red at t)."""
+    i = max(0, np.searchsorted(times, t, side="right") - 1)
+    if states[i] != "red":
+        return 0.0
+    j = i
+    while j + 1 < len(states) and states[j + 1] == "red":
+        j += 1
+    return times[j] - t
+
+
+def _side(points, a, b):
+    d = b - a
+    return np.sign(d[0] * (points[:, 1] - a[1]) - d[1] * (points[:, 0] - a[0]))
+
+
+def _stop_lines(scene, signals):
+    """(name, a, b, signal times, signal states) for every stop line whose signal we can read."""
+    out = []
+    if signals is None or signals.empty:
+        return out
+    for s in scene.of_type("stop_line"):
+        sig = SIGNAL_FOR_STOP_LINE.get(s["name"])
+        if sig in signals:
+            times, states = signal_timeline(signals, sig)
+            out.append((s["name"], s["points"][0], s["points"][-1], times, states))
+    return out
+
+
+def red_light(df, scene, signals=None):
+    """Vehicle crosses the stop line from its approach side while its signal has been red for RED_SETTLE s.
+    Segment: crossing -> vehicle leaves the junction / crossings (or its track ends)."""
+    veh = df[df.cls.isin(VEHICLES)]
+    after = scene.junction | scene.mask({"crosswalk"})
+    segs = []
+    for name, a, b, times, states in _stop_lines(scene, signals):
+        d = b - a
+        crossings = []
+        for tid, t in veh.groupby("track_id"):
+            p, ts = t[["gx", "gy"]].to_numpy(), t.t_sec.to_numpy()
+            side = _side(p, a, b)
+            proj = ((p - a) @ d) / (d @ d)
+            for i in range(1, len(p)):
+                if side[i - 1] != side[i] and side[i] != 0 and -0.05 <= proj[i] <= 1.05:
+                    crossings.append((tid, i, side[i - 1], t))
+        if not crossings:
+            continue
+        approach = np.sign(sum(c[2] for c in crossings))  # most vehicles come from the approach side
+        for tid, i, from_side, t in crossings:
+            tc = t.t_sec.iloc[i]
+            if from_side != approach or _red_since(times, states, tc) < RED_SETTLE \
+                    or _red_ahead(times, states, tc) < RED_AHEAD:
+                continue
+            rest = t.iloc[i:]
+            inside = lookup(after, rest.gx, rest.gy)
+            end = rest.t_sec[inside].max() if inside.any() else rest.t_sec.iloc[-1]
+            segs.append((tc, max(end, tc + 0.5), f"{name} {t.cls.iloc[0]} #{tid}"))
+    return segs
+
+
+def stop_line(df, scene, signals=None):
+    """Vehicle stands still past the stop line (not yet in the junction) while red; ends when the light turns green."""
+    veh = df[df.cls.isin(VEHICLES)]
+    segs = []
+    for name, a, b, times, states in _stop_lines(scene, signals):
+        d = b - a
+        p = veh[["gx", "gy"]].to_numpy()
+        side = _side(p, a, b)
+        # approach side = where vehicles wait at red most of the time
+        approach = np.sign(np.median(side[(veh.speed < STILL).to_numpy()])) or 1.0
+        proj = ((p - a) @ d) / (d @ d)
+        dist = np.abs(d[0] * (p[:, 1] - a[1]) - d[1] * (p[:, 0] - a[0])) / np.linalg.norm(d)
+        bh = veh.bh.to_numpy()
+        past = (side == -approach) & (proj > 0) & (proj < 1) & (dist > PAST_LINE * bh) & (dist < 2.5 * bh) \
+            & ~lookup(scene.junction, veh.gx, veh.gy)
+        red = np.array([_state_at(times, states, t) == "red" for t in veh.t_sec.to_numpy()])
+        flag = past & (veh.speed < STILL).to_numpy() & red
+        for tid, t in veh.assign(flag=flag).groupby("track_id"):
+            for s, _ in runs(t.flag.values, t.t_sec.values, min_len=1.0, max_gap=1.0):
+                green = times[(times > s) & (states == "green")]
+                segs.append((s, green[0] if len(green) else t.t_sec.iloc[-1], f"{name} {t.cls.iloc[0]} #{tid}"))
+    return segs
+
+
 RULES = {
     "stopped_vehicle": stopped_vehicle,
     "jaywalking": jaywalking,
     "failure_to_yield": failure_to_yield,
     "congestion": congestion,
     "wrong_way": wrong_way,
+    "red_light": red_light,
+    "stop_line": stop_line,
 }
+NEEDS_SIGNALS = {"red_light", "stop_line"}
 
 
-def detect(df, scene, duration, classes=tuple(RULES)):
-    """Run the enabled rules -> [(start, end, label, why)], merged per class, clipped to the video."""
+def detect(df, scene, duration, classes=tuple(RULES), signals=None):
+    """Run the enabled rules -> [(start, end, label, why)], merged per class, clipped to the video.
+    `signals`: DataFrame with t_sec and one state column per readable signal head (see signals.py)."""
     if df.empty:
         return []
     events = []
     for label in classes:
-        for s, e, why in merge(RULES[label](df, scene)):
+        found = RULES[label](df, scene, signals) if label in NEEDS_SIGNALS else RULES[label](df, scene)
+        for s, e, why in merge(found):
             e = min(e, duration)
             if e > s:
                 events.append((round(float(s), 2), round(float(e), 2), label, why))

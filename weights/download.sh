@@ -2,6 +2,8 @@
 # Fetch model weights once, with internet, before the offline evaluation run.
 set -euo pipefail
 cd "$(dirname "$0")"
-URL=https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26s.pt
-[ -f yolo26s.pt ] || curl -L --fail -o yolo26s.pt "$URL"
+BASE=https://github.com/ultralytics/assets/releases/download/v8.4.0
+for w in yolo26m.pt; do
+  [ -f "$w" ] || curl -L --fail -o "$w" "$BASE/$w"
+done
 echo "weights ready in $(pwd)"

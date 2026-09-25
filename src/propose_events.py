@@ -5,7 +5,7 @@ Output (loads into tools/label_tool.html as dashed pre-labels):
                             "proposals": [[start, end, label, score, why], ...]}}}
 
 Example:
-  python src/propose_events.py --run runs/C3902 --video samples/C3902.MP4
+  python src/propose_events.py --run runs/C3902 --video samples/C3902.MP4 --signals runs/signals/C3902.csv
 """
 import argparse
 import json
@@ -15,7 +15,7 @@ import cv2
 import pandas as pd
 
 from align import median_background
-from rules import add_motion, detect
+from rules import NEEDS_SIGNALS, RULES, add_motion, detect
 from scene import Scene
 
 
@@ -23,6 +23,7 @@ def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--run", required=True, help="folder with tracks.csv (and optionally background.jpg)")
     p.add_argument("--video", required=True, help="the video the tracks came from")
+    p.add_argument("--signals", default="", help="signal-state CSV from src/signals.py (enables red_light, stop_line)")
     p.add_argument("--out", default="", help="default: <run>/proposals.json")
     return p.parse_args()
 
@@ -40,7 +41,9 @@ def main():
         cv2.imwrite(str(bg_path), median_background(a.video))
     scene = Scene.for_video(a.video, background=cv2.imread(str(bg_path)))
     df = add_motion(pd.read_csv(run / "tracks.csv"), fps)
-    events = detect(df, scene, duration)
+    signals = pd.read_csv(a.signals) if a.signals else None
+    classes = [c for c in RULES if signals is not None or c not in NEEDS_SIGNALS]
+    events = detect(df, scene, duration, classes=classes, signals=signals)
 
     counts = pd.Series([e[2] for e in events]).value_counts().to_dict() if events else {}
     print(f"{Path(a.video).name}: {len(events)} proposals {counts}")

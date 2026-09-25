@@ -29,13 +29,12 @@ RISK_HORIZON_SEC = 5.0
 
 # Classes we currently emit. Emitting a class that is absent from the test set costs a zero in the
 # macro average, so a class is only listed here once it is reliable on our dev labels.
-ENABLED = ("stopped_vehicle", "jaywalking", "failure_to_yield", "congestion", "wrong_way")
+ENABLED = ("stopped_vehicle", "jaywalking", "failure_to_yield", "congestion", "wrong_way", "red_light", "stop_line")
 STRIDE = 3                 # process every 3rd frame (10 per second at 30 fps)
 IMGSZ = 1280               # detector input width; smaller loses far pedestrians
 # x duration for tracking; the harness decodes 4K for Part B at ~1.0-1.3x and rules + alignment take the rest.
 # Override only for local CPU experiments, e.g. PART_A_BUDGET=100.
 PART_A_BUDGET = float(os.environ.get("PART_A_BUDGET", 1.3))
-BACKGROUND_FRAMES = 15     # frames kept for the median background used to align the zones
 SEED = 0
 
 _model = None
@@ -63,7 +62,7 @@ def detect_events(video_path: str) -> list[list]:
     import cv2
     import pandas as pd
 
-    from align import median_image
+    import signals
     from rules import add_motion, detect
     from scene import Scene
     from tracker import COLUMNS, iter_tracks
@@ -73,26 +72,25 @@ def detect_events(video_path: str) -> list[list]:
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
     n_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    ok, first = cap.read()
     cap.release()
+    if not ok:
+        return []
     duration = n_frames / fps
     deadline = t0 + PART_A_BUDGET * duration
 
-    # one pass: tracking, and a few full frames kept for the background (no second decode)
-    keep_every = max(1, n_frames // STRIDE // BACKGROUND_FRAMES)
-    rows, bg_frames = [], []
-    for k, (_, _, frame, frame_rows) in enumerate(iter_tracks(video_path, _get_model(), stride=STRIDE,
-                                                              imgsz=IMGSZ, deadline=deadline)):
+    # align the zones on the first frame (within ~4 px of a full median-background alignment on our samples),
+    # so the signal heads can be read during the single tracking pass
+    scene = Scene.for_video(video_path, background=first)
+    rects = signals.boxes(scene)
+    rows, light_rows = [], []
+    for _, t, frame, frame_rows in iter_tracks(video_path, _get_model(), stride=STRIDE, imgsz=IMGSZ,
+                                               deadline=deadline):
         rows.extend(frame_rows)
-        if k % keep_every == 0 and len(bg_frames) < BACKGROUND_FRAMES:
-            bg_frames.append(frame)
-    if not bg_frames:
-        return []
-    background = median_image(bg_frames)
-    del bg_frames
+        light_rows.append({"t_sec": round(t, 3), **signals.states(frame, rects)})
 
-    scene = Scene.for_video(video_path, background=background)
     df = add_motion(pd.DataFrame(rows, columns=COLUMNS), fps)
-    events = detect(df, scene, duration, classes=ENABLED)
+    events = detect(df, scene, duration, classes=ENABLED, signals=pd.DataFrame(light_rows))
     print(f"[solution] {Path(video_path).name}: {len(rows)} detections, {len(events)} events, "
           f"{time.perf_counter() - t0:.0f}s", file=sys.stderr)
     return [[s, e, label] for s, e, label, _ in events]
