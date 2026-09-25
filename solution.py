@@ -1,103 +1,111 @@
 """
-solution.py — the ONLY file a team has to implement.
+solution.py — the interface the organizers' harness imports (run_submission.py).
 
-The organizers' harness (run_submission.py) imports this module and calls:
+Part A: detect_events(video_path) -> [[start_sec, end_sec, label], ...]
+    YOLO26 + ByteTrack over every 3rd frame -> tracks; hand-drawn scene zones aligned to this video
+    (SIFT homography against the reference background) -> rule-based events per class.
+Part B: RiskEstimator — causal accident risk per frame (not implemented yet: returns 0).
 
-    detect_events(video_path)  -> [[start_sec, end_sec, label], ...]    # Part A
-    RiskEstimator().reset(meta); .step(frame, t_sec) -> float           # Part B (optional)
-
-Keep the names and signatures exactly as they are. Everything else — models,
-tracking, rules, helper modules under src/ — is up to you.
-
-Labels must come from CLASSES. You may REMOVE classes you never predict;
-do not add new ids.
+All heavy code lives in src/; see README.md.
 """
 from __future__ import annotations
 
+import os
+import random
+import sys
+import time
+from pathlib import Path
+
 import numpy as np
 
-# Official class ids (14). See the task description for definitions and
-# start/end conventions. Remove entries you never predict; never add.
-CLASSES: list[str] = [
-    "accident",            # collision between road users / with a fixed object
-    "near_miss",           # sharp braking or swerving to avoid a collision, no contact
-    "red_light",           # crossing the stop line on red
-    "wrong_way",           # driving against the traffic direction / in the oncoming lane
-    "illegal_u_turn",      # U-turn where prohibited
-    "stopped_vehicle",     # stationary on the carriageway >= 10 s, not queued at a signal
-    "jaywalking",          # pedestrian on the carriageway outside a crossing
-    "failure_to_yield",    # driving through a crossing while a pedestrian is on it
-    "illegal_turn",        # turn from the wrong lane or in a prohibited direction
-    "solid_line_crossing", # lane change / manoeuvre across a solid marking
-    "stop_line",           # stopped past the stop line on red
-    "congestion",          # standstill / crawling traffic across all lanes of a direction
-    "road_obstacle",       # debris, animal or fallen object on the carriageway
-    "fire_smoke",          # visible fire or smoke from a vehicle or on the road
-]
+sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
-# Anticipation horizon used by the metric (seconds). step() should return
-# P(an `accident` starts within the next RISK_HORIZON_SEC seconds).
+CLASSES: list[str] = [
+    "accident", "near_miss", "red_light", "wrong_way", "illegal_u_turn",
+    "stopped_vehicle", "jaywalking", "failure_to_yield", "illegal_turn",
+    "solid_line_crossing", "stop_line", "congestion", "road_obstacle", "fire_smoke",
+]
 RISK_HORIZON_SEC = 5.0
+
+# Classes we currently emit. Emitting a class that is absent from the test set costs a zero in the
+# macro average, so a class is only listed here once it is reliable on our dev labels.
+ENABLED = ("stopped_vehicle", "jaywalking", "failure_to_yield", "congestion", "wrong_way")
+STRIDE = 3                 # process every 3rd frame (10 per second at 30 fps)
+IMGSZ = 1280               # detector input width; smaller loses far pedestrians
+# x duration for tracking; the harness decodes 4K for Part B at ~1.0-1.3x and rules + alignment take the rest.
+# Override only for local CPU experiments, e.g. PART_A_BUDGET=100.
+PART_A_BUDGET = float(os.environ.get("PART_A_BUDGET", 1.3))
+BACKGROUND_FRAMES = 15     # frames kept for the median background used to align the zones
+SEED = 0
+
+_model = None
+
+
+def _seed_everything():
+    random.seed(SEED)
+    np.random.seed(SEED)
+    import torch
+    torch.manual_seed(SEED)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
+def _get_model():
+    global _model
+    if _model is None:
+        from tracker import load_model
+        _model = load_model()
+    return _model
 
 
 def detect_events(video_path: str) -> list[list]:
-    """Part A — traffic event detection.
+    """Part A. Return [[start_sec, end_sec, label], ...] for one .mp4."""
+    import cv2
+    import pandas as pd
 
-    Args:
-        video_path: path to one .mp4 file. You may open it any way you like
-            (OpenCV, decord, PyAV, ffmpeg), read it several times, sample
-            frames, run batched models — anything goes.
+    from align import median_image
+    from rules import add_motion, detect
+    from scene import Scene
+    from tracker import COLUMNS, iter_tracks
 
-    Returns:
-        A list of events, each ``[start_sec, end_sec, label]`` with
-        ``0 <= start_sec < end_sec <= duration`` (floats, seconds from the
-        first frame) and ``label in CLASSES``. Return ``[]`` if nothing
-        happened. Segments of the same class must not overlap.
+    t0 = time.perf_counter()
+    _seed_everything()
+    cap = cv2.VideoCapture(video_path)
+    fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+    n_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    cap.release()
+    duration = n_frames / fps
+    deadline = t0 + PART_A_BUDGET * duration
 
-    A typical pipeline:
-        1. sample frames (every 2nd–5th frame is usually enough),
-        2. detect road users (YOLO / RT-DETR) and track them (ByteTrack),
-        3. turn trajectories + scene layout (lanes, stop line, crossing)
-           into per-frame flags for each class,
-        4. merge consecutive flags into segments, drop blips < 0.5 s,
-           merge gaps < 1 s,
-        5. optionally re-score `accident` / `near_miss` candidates with a
-           learned clip classifier.
-    """
-    # TODO: replace this stub with your pipeline.
-    return []
+    # one pass: tracking, and a few full frames kept for the background (no second decode)
+    keep_every = max(1, n_frames // STRIDE // BACKGROUND_FRAMES)
+    rows, bg_frames = [], []
+    for k, (_, _, frame, frame_rows) in enumerate(iter_tracks(video_path, _get_model(), stride=STRIDE,
+                                                              imgsz=IMGSZ, deadline=deadline)):
+        rows.extend(frame_rows)
+        if k % keep_every == 0 and len(bg_frames) < BACKGROUND_FRAMES:
+            bg_frames.append(frame)
+    if not bg_frames:
+        return []
+    background = median_image(bg_frames)
+    del bg_frames
+
+    scene = Scene.for_video(video_path, background=background)
+    df = add_motion(pd.DataFrame(rows, columns=COLUMNS), fps)
+    events = detect(df, scene, duration, classes=ENABLED)
+    print(f"[solution] {Path(video_path).name}: {len(rows)} detections, {len(events)} events, "
+          f"{time.perf_counter() - t0:.0f}s", file=sys.stderr)
+    return [[s, e, label] for s, e, label, _ in events]
 
 
 class RiskEstimator:
-    """Part B — causal accident anticipation (optional, bonus).
-
-    The harness calls ``reset(meta)`` once per video and then ``step`` for
-    EVERY frame, in order. ``step`` must use only the frames it has seen so
-    far: do not open the video file inside this class, and do not reuse
-    Part A results that were computed with access to future frames.
-    """
+    """Part B (optional). Causal: step() sees frames in order and nothing else."""
 
     def reset(self, meta: dict) -> None:
-        """Called once before the first frame of each video.
-
-        meta = {"video_id": str, "fps": float, "width": int, "height": int,
-                "n_frames": int}
-        """
+        # meta = {"video_id", "fps", "width", "height", "n_frames"}
         self.meta = meta
         self.last_score = 0.0
 
     def step(self, frame: np.ndarray, t_sec: float) -> float:
-        """Return P(accident starts within the next RISK_HORIZON_SEC s).
-
-        Args:
-            frame: BGR uint8 array of shape (H, W, 3) — OpenCV convention.
-            t_sec: timestamp of this frame in seconds.
-
-        Returns:
-            A float in [0, 1]. Skipping frames internally and returning the
-            previous score is fine; the harness still expects a value for
-            every call.
-        """
-        # TODO: replace this stub. A simple strong baseline: track vehicles,
-        # estimate time-to-collision between pairs, map min TTC -> risk.
+        # frame: BGR uint8 (H, W, 3). Return P(accident starts within 5 s) in [0, 1].
         return self.last_score

@@ -21,9 +21,14 @@ def median_background(video_path, n_frames=15):
         if ok:
             frames.append(frame)
     cap.release()
+    return median_image(frames)
+
+
+def median_image(frames):
+    """Per-pixel median of equally sized frames, computed in row chunks to keep memory low on 4K."""
     stack = np.stack(frames)
     bg = np.empty(stack.shape[1:], np.uint8)
-    for r in range(0, bg.shape[0], 120):  # row chunks keep memory low on 4K
+    for r in range(0, bg.shape[0], 120):
         bg[r:r + 120] = np.median(stack[:, r:r + 120], axis=0)
     return bg
 

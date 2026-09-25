@@ -92,3 +92,23 @@ the class for new segments; Shift+key relabels.
 
 **Proxies for labelling**: 1280-wide H.264 copies of the samples (FFmpeg from the `imageio-ffmpeg` pip package;
 OpenCV on Windows has no H.264 encoder). Frame times are identical to the originals, so labels transfer 1:1.
+
+**End-to-end solution v1** (afternoon)
+- Code split into modules shared by the harness, the CLIs and (later) the web demo:
+  `src/tracker.py` (detect + track, one pass, early stop on a deadline), `src/scene.py` (zones aligned per video,
+  masks), `src/rules.py` (event rules + segment merging), `src/align.py` (homography, median background).
+- `solution.py` now implements Part A: YOLO26m @1280, every 3rd frame, ByteTrack → zones aligned with a median
+  background built from frames the tracker already decoded (no second decode) → rules for stopped_vehicle,
+  jaywalking, failure_to_yield, congestion, wrong_way. Fixed seeds. Part B still returns 0.
+- Ran the unchanged official `run_submission.py` on a 20 s 4K clip cut with `-c copy` (same codec): valid output
+  (`evaluate.py --validate-only` passes).
+- Runtime measured through the harness on the laptop CPU: the harness's own Part B decode of 4K took 21.8 s for a
+  21 s clip (~1.04× real time on 12 threads; expect ~1.3× on the 8-core evaluator). So Part A tracking is capped at
+  1.3× duration (`PART_A_BUDGET`, env override for local CPU experiments). The cap worked: the CPU run stopped early
+  and still returned a valid result inside the budget.
+- With the cap lifted (CPU, 240 s for 21 s), the clip from the C3905 jam gives: congestion 1.0–18.9 s (the real jam),
+  one jaywalking segment, four failure_to_yield segments.
+- failure_to_yield rule v1: pedestrian must be on the same crossing (15 px margin) AND within 4 vehicle-box-heights of
+  the vehicle; people inside vehicle boxes ignored. Jaywalking v1 ignores people at the frame border.
+  Proposal counts v0 → v1: failure_to_yield 42→29 (C3897), 37→30 (C3902), 22→18 (C3905); jaywalking 21→17, 23→22, 12→7.
+- C3897 tracking run was interrupted at 257/318 s (app closed); its proposals cover 0–257 s.
