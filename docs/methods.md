@@ -23,12 +23,17 @@ YOLO26m (IoU ≥ 0.5), a label-free proxy for recall/precision.
 | YOLO26m @1280 + ByteTrack (reference) | 0.82 | 26.2 | 19.6 | 1.00 | 1.00 | 110 | 69 | 5.5% |
 | YOLO26s @1280 + ByteTrack | 1.61 | 21.4 | 19.6 | 0.95 | 0.87 | 101 | 55 | 7.9% |
 | YOLO26s @1280 + BoT-SORT | 1.08 | 23.8 | 19.9 | 0.94 | 0.91 | 123 | 38 | 16.3% |
-| YOLO26s @960 + ByteTrack | pending | | | | | | | |
-| YOLO26n @1280 + ByteTrack | pending | | | | | | | |
+| YOLO26s @960 + ByteTrack | 1.30 | 16.2 | 17.7 | 0.92 | 0.74 | 90 | 55 | 10.0% |
+| YOLO26n @1280 + ByteTrack | 1.57* | 16.3 | 17.1 | 0.89 | 0.75 | 85 | 57 | 5.9% |
+
+\* measured while FFmpeg was encoding proxies on the same CPU, so its speed is understated.
 
 Reading so far:
 - Vehicles are easy: the small model agrees 95% with the medium one. People are the hard part (small, far):
   YOLO26m finds ~22% more people per frame than YOLO26s.
+- YOLO26n misses a third of the people and 13% of cars versus YOLO26m: not for the submission.
+- Lowering the input size to 960 loses a third of the people (16.2 vs 26.2 per frame, agreement 0.74) and some
+  far cars: **keep imgsz ≥ 1280** on 4K footage.
 - On a T4 the medium model is cheap (YOLO26 docs: 1.7–11.8 ms TensorRT across sizes), so **YOLO26m is the likely
   submission detector**; YOLO26s/n for the CPU web demo.
 - Other candidates not yet run: RF-DETR (Apache-2.0, strong on small objects), tiling the far half of the frame for
