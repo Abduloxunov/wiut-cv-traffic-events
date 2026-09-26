@@ -229,3 +229,11 @@ figures `../figures/07_detection_check/`). On 10 frames of the 5 barely-seen lab
 because they are small. Tiling mostly adds far pavement people and **drivers seen through windscreens** (new false
 "pedestrians" in the road). → No tiling for jaywalking. Label question: people walking just beside the zebra were
 labelled jaywalking (C3897 0:31–0:34), which differs from the earlier "a metre off the stripes = crossing" note.
+
+**Decision (27 Sep): beside the zebra = jaywalking** (PDF: "outside a crossing"; the PDF is the main source). So the
+crossing zone gets no extra tolerance margin; jaywalking v2 must be retuned with a smaller/zero margin once C3897 is
+relabelled. The lead checks whether the exported C3897 file lacks labels that exist in the tool (file vs UI).
+**How we are tested** (task PDF): hidden test videos from the same camera and angle, same resolution/fps/viewpoint as
+the samples, annotated by the organisers; they run the unchanged `run_submission.py` offline on a T4-class GPU
+(`pip install -r requirements.txt`, weights fetched once by `weights/download.sh`) and score with the published
+`evaluate.py` — "the same pipeline you can run locally; only the ground truth differs".
