@@ -165,3 +165,52 @@ during red. Check against the labels afterwards.
 in the junction for ≥ 5 s, so one backed-up lane (often a turn lane) triggers it while the other lanes of that
 direction flow. The definition needs *all lanes of a direction* stopped or crawling. Fix: per direction (lane_dir
 zones), require still/crawling vehicles across every lane of that direction, and ignore queues that clear on green.
+
+**Labelling tool made shareable** (26 Sep): fixes (Ctrl+Z undo, buttons no longer keep keyboard focus, N/P step
+through the list, suggestions imported once), `tools/serve.py` (local server with Range support so videos seek),
+`tools/make_label_bundles.py` (one zip per video: 1280-wide proxy + tool with that video's suggestions built in +
+START.bat; nothing to install), `?store=` for separate review workspaces. Fourth sample video **C3896** (5:40) found:
+proxy made, tracked (70 min on CPU), 39 suggestions, bundle built.
+
+**Dev labels done** (27 Sep): C3897 (lead), C3902 and C3905 (first pass by teammates, then reviewed by the lead:
+7 → 25 and 6 → 12 events, so first passes caught only a third to a half). 58 events, 8 classes: jaywalking 26,
+solid_line_crossing 9, failure_to_yield 7, congestion 6, stopped_vehicle 4, near_miss 2, illegal_turn 2, stop_line 2.
+No accidents (Part B cannot be scored on our data). Overlapping same-class segments in C3897 were merged (24 → 21).
+Team decisions on ambiguous cases are in `labels/notes.md`.
+
+**Baseline on the dev labels: Score A = 0.094** (official evaluate.py; rules v1 re-run on saved tracks). Per class:
+stop_line 0.50, jaywalking 0.23, congestion 0.19, failure_to_yield 0.02 (85 predicted vs 7 real), stopped_vehicle 0,
+no detector for solid_line / near_miss / illegal_turn, red_light and wrong_way only false positives. What-ifs: dropping
+red_light + wrong_way → 0.118; merging jaywalking fragments ≤ 4–8 s apart → 0.133–0.138.
+
+**Research round 2: how others build these systems** → `../reports/CCTV traffic event detection systems.md`
+(notes in `../research_notes/`). 36+ repos, AI City / ACCIDENT@CVPR2026 winners, papers, vendors, Uzbekistan
+context. Key points: everyone uses detector + tracker + drawn zones + light reader + one rule per class; winners win on
+segment post-processing (persistence, gap bridging, one segment per event, backtracked starts); per-class fixes for our
+weak classes; two other WIUT teams publicly switch off the hard classes (concepts only, nothing copied).
+
+**Decision: rewrite the event layer from scratch, one class at a time** (keep detection, tracking, alignment, zones).
+New code lives in `src/v2/`; each class is scored alone against the dev labels with leave-one-video-out tuning.
+
+**jaywalking v2** (`src/v2/jaywalking.py`, `src/v2/segments.py`, `experiments/jaywalking/`):
+- Scene-level signal "anyone on the carriageway outside a crossing"; margin to walk areas scales with the person's
+  height (0.25 × box height); riders and border-cut boxes excluded; per person ≥ 40 % of samples in a 1 s window,
+  runs ≥ 1 s; scene runs bridged over gaps ≤ 4 s; events < 3 s dropped.
+- Result (jaywalking F1, mean of tIoU 0.3/0.5/0.7): **old 0.23 → v2 0.44–0.46 leave-one-video-out, 0.47 on all 3**
+  (F1 0.58 / 0.50 / 0.33; 14 of 26 events found at 0.3). Chosen settings identical across folds.
+- Tried and left switched off (mixed results): distance to any kerb (`KERB`), ignoring boxes much shorter than a
+  whole person at that row (`PARTIAL`, occlusion).
+- Error causes found (figures in `../figures/06_jaywalking_v2/`): people between the triangle islands and walking
+  along the kerb in C3897 1:15–4:06 are unlabelled (label question); the road zone covers part of the grass strip in
+  the top-right (zone error); people waiting at kerbs / planter wall; one tracker ID glued across several people;
+  short 2–3 s crossings removed by the 3 s minimum; detector/track misses inside some labelled events
+  (candidate present in 0–18 % of their frames).
+
+**Figures** are now collected and grouped in `../figures/` with `INDEX.md` (local only, from footage).
+
+### Next actions (running list)
+1. Lead re-checks C3897 1:15–4:06 for jaywalking (island-to-island walkers, kerb walkers) → retune jaywalking v2.
+2. Zones: remove the grass strip from the road polygon (top-right); shorten solid_line_1…5 to the real solid part.
+3. stopped_vehicle v2 (next class): box-overlap persistence instead of track IDs, "queued = moves on its green".
+4. Then failure_to_yield v2, congestion v2, stop_line fix, solid_line_crossing, emission gate per class.
+5. Wire v2 classes into `solution.py` once each beats its v1 on the dev labels; T4 timing run; website.
