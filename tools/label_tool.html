@@ -116,7 +116,8 @@ const CLASSES = [
 ];
 const COLOR = Object.fromEntries(CLASSES.map(c => [c[0], c[2]]));
 const KEYMAP = Object.fromEntries(CLASSES.map(c => [c[1], c[0]]));
-const STORE = "event-labeler-v1";
+// ?store=<name> keeps a separate workspace in this browser (e.g. reviewing a teammate's labels)
+const STORE = "event-labeler-v1" + (new URLSearchParams(location.search).get("store") ? ":" + new URLSearchParams(location.search).get("store") : "");
 
 const $ = id => document.getElementById(id);
 const v = $("v"), tl = $("timeline"), tctx = tl.getContext("2d");
