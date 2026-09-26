@@ -237,3 +237,8 @@ relabelled. The lead checks whether the exported C3897 file lacks labels that ex
 the samples, annotated by the organisers; they run the unchanged `run_submission.py` offline on a T4-class GPU
 (`pip install -r requirements.txt`, weights fetched once by `weights/download.sh`) and score with the published
 `evaluate.py` — "the same pipeline you can run locally; only the ground truth differs".
+
+**Label export gap found (27 Sep):** the lead sees 14 jaywalking segments in C3897 but the exported file has 8 —
+6 are suggestions never accepted (faded), and Export writes only accepted segments. Fix: accept them (A) and export
+again; the tool now warns on export when unaccepted suggestions remain, bundles rebuilt. Dev scores so far used the
+8-segment file, so C3897 jaywalking "false positives" partly are these unexported labels.

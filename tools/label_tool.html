@@ -80,7 +80,7 @@
     <button id="importBtn">Import labels / proposals…</button>
     <input id="jsonFile" type="file" accept=".json" hidden multiple>
   </div>
-  <p class="muted">Export holds every video labelled in this browser. Proposals (dashed) are suggestions: accept, fix or delete them. Only accepted segments are exported.</p>
+  <p class="muted">Export holds every video labelled in this browser. Suggestions are faded and dashed: accept (<b>A</b>), fix or delete them. <b>Only accepted (bright) segments are exported.</b></p>
 
   <h2>Keys</h2>
   <p class="muted">
@@ -303,6 +303,11 @@ $("accept").onclick = () => { if (sel && sel.prop) { snap(); sel.prop = false; s
 $("del").onclick = () => { if (sel) { snap(); db[cur].segs = segs().filter(g => g !== sel); sel = null; save(); refresh(); } };
 
 $("exportBtn").onclick = () => {
+  // faded suggestions are not exported: say so, so nobody loses segments they meant to keep
+  const pending = Object.values(db).reduce((n, d) => n + d.segs.filter(g => g.prop).length, 0);
+  if (pending && !confirm(`${pending} suggestion(s) are not accepted (faded) and will NOT be exported.
+` +
+      "To keep one: click it and press A. Export anyway?")) return;
   const out = {};
   for (const [name, d] of Object.entries(db)) {
     out[name] = { duration: d.duration, fps: d.fps, events: d.segs.filter(g => !g.prop).sort((a, b) => a.s - b.s).map(g => [g.s, g.e, g.label]) };
