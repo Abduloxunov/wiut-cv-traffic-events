@@ -245,3 +245,12 @@ again; the tool now warns on export when unaccepted suggestions remain, bundles 
 Added an **"Accept all suggestions"** button (current video, Ctrl+Z undoes) at the lead's request — the lead had
 deleted every wrong suggestion, so all remaining ones are labels. Updated tool copied into the lead's unzipped
 `label_bundles/label_C3897/label_C3897/` (old page kept as label_tool.old.html; work stays in browser storage).
+
+**C3897 labels v2** (`label_bundles/labels_C3897 v2 merged.json`, from the lead's export
+`labels_C3897-accepted ssuggestion.json` after "Accept all"; same-class overlaps merged): 34 events — jaywalking 14
+(was 8), failure_to_yield 6, solid_line_crossing 6, congestion 3, stopped_vehicle 2, stop_line 1, near_miss 1,
+illegal_turn 1. Official format check VALID. To check: the 3 accepted congestion suggestions (partial-lane rule).
+**Jaywalking re-scored on complete labels:** old rule 0.32; **v2 with the settings chosen before the new labels
+0.47** (C3897 0.51, C3902 0.42, C3905 0.52); best case after re-tuning 0.50; leave-one-video-out 0.41 (the bigger
+search overfits — kept the earlier settings). Margin 0 (beside-the-zebra decision) was not chosen by the search;
+0.25 × height still wins, likely because foot points are noisy near the stripes.

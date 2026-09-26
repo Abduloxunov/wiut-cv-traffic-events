@@ -13,7 +13,7 @@ from rules import add_motion  # noqa: E402
 from scene import Scene  # noqa: E402
 
 DATA = ROOT.parent
-LABELS = {"C3897.MP4": "labels_C3897 -mine.json", "C3902.MP4": "labels_C3902 done.json",
+LABELS = {"C3897.MP4": "labels_C3897 v2 merged.json", "C3902.MP4": "labels_C3902 done.json",
           "C3905.MP4": "labels_C3905 done.json"}
 FPS = 29.97
 

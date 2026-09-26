@@ -12,7 +12,7 @@ try:
 except FileNotFoundError:
     data = {v: load(v) for v in LABELS}
     pickle.dump(data, open(CACHE, "wb"))
-gts = {v: g for v, (_, _, g) in data.items()}
+gts = {v: json.load(open(DATA / "label_bundles" / LABELS[v], encoding="utf-8"))[v] for v in LABELS}  # always the latest labels
 
 
 def f1(res):
@@ -45,7 +45,7 @@ print("old rule:", round(f1(score(old, gts)), 3), {v: round(f1(score({v: old[v]}
 d = run({}, LABELS)
 print("v2 defaults:", round(f1(score(d, gts)), 3), {v: round(f1(score({v: d[v]}, sub([v]))), 3) for v in LABELS})
 
-grid = dict(MARGIN=[0.1, 0.25, 0.5], RATIO=[0.4], PERSON_MIN=[0.5, 1.0], PARTIAL=[0.0, 0.75], KERB=[False, True], GAP=[1.0, 2.0, 4.0, 6.0], MIN_LEN=[0.5, 1.5, 3.0])
+grid = dict(MARGIN=[0.0, 0.1, 0.25], RATIO=[0.4], PERSON_MIN=[0.5, 1.0], PARTIAL=[0.0, 0.75], KERB=[False, True], GAP=[1.0, 2.0, 4.0, 6.0], MIN_LEN=[0.5, 1.5, 3.0])
 combos = [dict(zip(grid, c)) for c in itertools.product(*grid.values())]
 results = []
 for c in combos:
