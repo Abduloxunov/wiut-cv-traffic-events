@@ -87,12 +87,16 @@
     <kbd>Space</kbd> play/pause · <kbd>←</kbd><kbd>→</kbd> 1 frame · <kbd>Shift</kbd>+arrows 1 s · <kbd>Ctrl</kbd>+arrows 5 s ·
     <kbd>,</kbd><kbd>.</kbd> slower/faster · <kbd>I</kbd> start new segment · <kbd>O</kbd> end it ·
     <kbd>[</kbd><kbd>]</kbd> move selected start/end to now · <kbd>N</kbd>/<kbd>P</kbd> next/previous segment ·
-    <kbd>A</kbd> accept proposal · <kbd>Del</kbd> delete · <kbd>Esc</kbd> cancel pending start / deselect ·
+    <kbd>A</kbd> accept proposal · <kbd>Del</kbd> delete · <kbd>Esc</kbd> cancel pending start / deselect · <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo ·
     class key = class for new segments · <kbd>Shift</kbd>+class key = relabel the selected segment.
     Click the timeline to seek; drag a segment edge to adjust it.
   </p>
 </div>
 
+<script>
+// make_label_bundles.py replaces the next line with the bundle's video name and proposals
+const PRELOAD = null;
+</script>
 <script>
 const CLASSES = [
   ["accident", "1", "#ef4444", "Contact between road users or with a fixed object. Start: first frame contact is visible. End: all involved stop moving or leave the frame."],
@@ -125,6 +129,13 @@ let view = { t0: 0, t1: 1 }, dragEdge = null;
 function load() { try { db = JSON.parse(localStorage.getItem(STORE) || "{}"); } catch (e) { db = {}; } }
 function save() { try { localStorage.setItem(STORE, JSON.stringify(db)); } catch (e) { /* blocked storage: export still works */ } }
 function segs() { return cur ? db[cur].segs : []; }
+const undoStack = [];
+function snap() { if (cur) { undoStack.push([cur, JSON.stringify(db[cur].segs)]); if (undoStack.length > 200) undoStack.shift(); } }
+function undo() {
+  const u = undoStack.pop(); if (!u) return;
+  const [name, list] = u; db[name].segs = JSON.parse(list); sel = null; save();
+  if (name === cur) refresh();
+}
 const fps = () => parseFloat($("fps").value) || 29.97;
 const fmt = t => { const m = Math.floor(t / 60), s = t - m * 60; return `${m}:${s.toFixed(2).padStart(5, "0")}`; };
 
@@ -142,7 +153,7 @@ function buildClasses() {
 }
 function setClass(name, relabel = false) {
   cls = name;
-  if (relabel && sel && sel.label !== name) { sel.label = name; save(); }
+  if (relabel && sel && sel.label !== name) { snap(); sel.label = name; save(); }
   buildClasses(); refresh();
 }
 
@@ -179,12 +190,13 @@ function addSeg(s, e) {
   if (e < s) [s, e] = [e, s];
   if (e - s < 1 / fps()) return;
   const g = { s: +s.toFixed(3), e: +e.toFixed(3), label: cls, prop: false };
-  segs().push(g); save(); select(g, false);
+  snap(); segs().push(g); save(); select(g, false);
 }
 function neighbour(dir) {
   const list = segs(); if (!list.length) return;
-  const t = v.currentTime + dir * 0.01;
-  const g = dir > 0 ? list.find(x => x.s > t) : [...list].reverse().find(x => x.s < t - 0.05);
+  // step through the list from the selected segment; with nothing selected, start from the playhead
+  const i = list.indexOf(sel), t = v.currentTime;
+  const g = i >= 0 ? list[i + dir] : dir > 0 ? list.find(x => x.s >= t - 0.01) : [...list].reverse().find(x => x.s < t - 0.05);
   if (g) select(g, true);
 }
 
@@ -246,6 +258,7 @@ tl.addEventListener("mousedown", e => {
     const tol = 6 * (view.t1 - view.t0) / tl.clientWidth, t = tOf(e.offsetX);
     if (Math.abs(t - g.s) < tol) dragEdge = { g, edge: "s" };
     else if (Math.abs(t - g.e) < tol) dragEdge = { g, edge: "e" };
+    if (dragEdge) snap();
     select(g, !dragEdge);
     return;
   }
@@ -260,14 +273,16 @@ window.addEventListener("mouseup", () => { if (dragEdge) { if (dragEdge.g.e < dr
 
 // ---------------- video ----------------
 $("openVid").onclick = () => $("vidFile").click();
-$("vidFile").onchange = e => {
-  const f = e.target.files[0]; if (!f) return;
-  cur = f.name; v.src = URL.createObjectURL(f);
+function openVideo(name, src) {
+  cur = name; v.src = src; sel = null; pendingStart = null; $("pending").style.display = "none";
   v.onloadedmetadata = () => {
     db[cur] = db[cur] || { duration: v.duration, fps: fps(), segs: [] };
-    db[cur].duration = +v.duration.toFixed(3); save(); sel = null; refresh();
+    db[cur].duration = +v.duration.toFixed(3);
+    if (db[cur].fps) $("fps").value = db[cur].fps;
+    save(); refresh();
   };
-};
+}
+$("vidFile").onchange = e => { const f = e.target.files[0]; if (f) openVideo(f.name, URL.createObjectURL(f)); e.target.value = ""; };
 $("rate").onchange = () => (v.playbackRate = +$("rate").value);
 $("zoom").oninput = drawTimeline;
 function tick() {
@@ -281,10 +296,10 @@ function tick() {
 function step(dt) { v.pause(); v.currentTime = Math.max(0, Math.min(v.duration || 0, v.currentTime + dt)); }
 
 // ---------------- buttons ----------------
-$("setS").onclick = () => { if (sel) { sel.s = +v.currentTime.toFixed(3); if (sel.e < sel.s) [sel.s, sel.e] = [sel.e, sel.s]; save(); refresh(); } };
-$("setE").onclick = () => { if (sel) { sel.e = +v.currentTime.toFixed(3); if (sel.e < sel.s) [sel.s, sel.e] = [sel.e, sel.s]; save(); refresh(); } };
-$("accept").onclick = () => { if (sel) { sel.prop = false; save(); const next = segs().find(g => g.prop && g.s >= sel.s); refresh(); if (next) select(next, true); } };
-$("del").onclick = () => { if (sel) { db[cur].segs = segs().filter(g => g !== sel); sel = null; save(); refresh(); } };
+$("setS").onclick = () => { if (sel) { snap(); sel.s = +v.currentTime.toFixed(3); if (sel.e < sel.s) [sel.s, sel.e] = [sel.e, sel.s]; save(); refresh(); } };
+$("setE").onclick = () => { if (sel) { snap(); sel.e = +v.currentTime.toFixed(3); if (sel.e < sel.s) [sel.s, sel.e] = [sel.e, sel.s]; save(); refresh(); } };
+$("accept").onclick = () => { if (sel && sel.prop) { snap(); sel.prop = false; save(); const next = segs().find(g => g.prop && g.s >= sel.s); refresh(); if (next) select(next, true); } };
+$("del").onclick = () => { if (sel) { snap(); db[cur].segs = segs().filter(g => g !== sel); sel = null; save(); refresh(); } };
 
 $("exportBtn").onclick = () => {
   const out = {};
@@ -293,27 +308,27 @@ $("exportBtn").onclick = () => {
   }
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 1)], { type: "application/json" }));
-  a.download = "labels.json"; a.click();
+  const names = Object.keys(out).map(n => n.replace(/\.[^.]+$/, ""));
+  a.download = names.length === 1 ? `labels_${names[0]}.json` : "labels.json"; a.click();
 };
 $("importBtn").onclick = () => $("jsonFile").click();
-$("jsonFile").onchange = async e => {
-  for (const f of e.target.files) {
-    const o = JSON.parse(await f.text());
-    const videos = o.videos || o;   // predictions / proposals use {"videos": {...}}, ground truth is flat
-    for (const [name, d] of Object.entries(videos)) {
-      db[name] = db[name] || { duration: d.duration || 0, fps: d.fps || fps(), segs: [] };
-      if (d.duration) db[name].duration = d.duration;
-      const isProposal = !!o.videos;
-      for (const ev of (d.events || d.proposals || [])) {
-        const [s, e, label, score, why] = ev;
-        if (!COLOR[label]) continue;
-        if (db[name].segs.some(g => g.label === label && Math.abs(g.s - s) < 0.05 && Math.abs(g.e - e) < 0.05)) continue;
-        db[name].segs.push({ s, e, label, prop: isProposal, score, why });
-      }
+$("jsonFile").onchange = async e => { for (const f of e.target.files) importJSON(JSON.parse(await f.text())); e.target.value = ""; };
+function importJSON(o) {
+  const videos = o.videos || o;   // predictions / proposals use {"videos": {...}}, ground truth is flat
+  for (const [name, d] of Object.entries(videos)) {
+    db[name] = db[name] || { duration: d.duration || 0, fps: d.fps || fps(), segs: [] };
+    if (d.duration) db[name].duration = d.duration;
+    const isProposal = !!o.videos;
+    if (name === cur) snap();
+    for (const ev of (d.events || d.proposals || [])) {
+      const [s, e, label, score, why] = ev;
+      if (!COLOR[label]) continue;
+      if (db[name].segs.some(g => g.label === label && Math.abs(g.s - s) < 0.05 && Math.abs(g.e - e) < 0.05)) continue;
+      db[name].segs.push({ s, e, label, prop: isProposal, score, why });
     }
   }
   save(); refresh();
-};
+}
 
 // ---------------- keyboard ----------------
 window.addEventListener("keydown", e => {
@@ -327,6 +342,7 @@ window.addEventListener("keydown", e => {
   else if (k === "i" || k === "I") { pendingStart = v.currentTime; $("pending").style.display = "block"; }
   else if (k === "o" || k === "O") { if (pendingStart !== null) { addSeg(pendingStart, v.currentTime); pendingStart = null; $("pending").style.display = "none"; } }
   else if (k === "Escape") { pendingStart = null; $("pending").style.display = "none"; select(null); }
+  else if ((k === "z" || k === "Z") && (e.ctrlKey || e.metaKey)) { e.preventDefault(); undo(); }
   else if (k === "[") $("setS").click();
   else if (k === "]") $("setE").click();
   else if (k === "a" || k === "A") $("accept").click();
@@ -344,7 +360,24 @@ window.addEventListener("keydown", e => {
   }
 });
 
+document.addEventListener("click", e => { const b = e.target.closest("button"); if (b) b.blur(); });
+$("rate").addEventListener("change", () => $("rate").blur());
 window.addEventListener("resize", sizeTimeline);
+// open straight from the URL: label_tool.html?video=/proxies/C3897.MP4&import=/proxies/proposals_C3897.json
+(async () => {
+  const q = new URLSearchParams(location.search);
+  // each source is imported once, so a reload does not bring back deleted proposals
+  let done = []; try { done = JSON.parse(localStorage.getItem(STORE + "-imported") || "[]"); } catch (err) { }
+  if (PRELOAD && !done.includes("bundle:" + PRELOAD.video)) { importJSON(PRELOAD.proposals); done.push("bundle:" + PRELOAD.video); }
+  for (const url of q.getAll("import")) {
+    if (done.includes(url)) continue;
+    try { importJSON(await (await fetch(url)).json()); done.push(url); } catch (err) { $("warn").textContent = "could not import " + url; }
+  }
+  try { localStorage.setItem(STORE + "-imported", JSON.stringify(done)); } catch (err) { }
+  const vid = q.get("video");
+  if (vid) openVideo(decodeURIComponent(vid.split("/").pop()), vid);
+  else if (PRELOAD) openVideo(PRELOAD.video, encodeURI(PRELOAD.video));
+})();
 load(); buildClasses(); sizeTimeline(); requestAnimationFrame(tick);
 </script>
 </body>

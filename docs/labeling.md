@@ -3,6 +3,14 @@
 Without labels every threshold is a guess. The dev set is our own `labels.json` in the exact ground-truth format,
 scored with `python evaluate.py --pred predictions_samples.json --gt labels.json --per-video`.
 
+## Sharing with teammates (nothing to install)
+`python tools/make_label_bundles.py` writes `../label_bundles/label_<video>.zip`: the proxy video, the tool with
+that video's proposals built in, START.bat / start.sh and a README. Unzip, double-click START.bat, label, press
+**Export** → `labels_<video>.json` comes back to the lead. Send the zips to team members only (footage condition).
+
+On the lead's machine, `python tools/serve.py --dir .. --port 8766` (supports seeking) and open
+`http://127.0.0.1:8766/submission/tools/label_tool.html?video=/proxies/C3897.MP4&import=/proxies/proposals_C3897.json`.
+
 ## Workflow (about 1–1.5 h per 5-minute video)
 1. Open `tools/label_tool.html` (serve the repo: `python -m http.server 8765`, then http://localhost:8765/tools/label_tool.html).
 2. **Open video…** → pick the proxy `proxies/C3897.MP4` (1280 wide, same name, frame count and fps as the
