@@ -76,6 +76,7 @@
 
   <h2>Files</h2>
   <div class="row">
+    <button id="acceptAll">Accept all suggestions</button>
     <button id="exportBtn">Export labels.json</button>
     <button id="importBtn">Import labels / proposals…</button>
     <input id="jsonFile" type="file" accept=".json" hidden multiple>
@@ -302,6 +303,12 @@ $("setE").onclick = () => { if (sel) { snap(); sel.e = +v.currentTime.toFixed(3)
 $("accept").onclick = () => { if (sel && sel.prop) { snap(); sel.prop = false; save(); const next = segs().find(g => g.prop && g.s >= sel.s); refresh(); if (next) select(next, true); } };
 $("del").onclick = () => { if (sel) { snap(); db[cur].segs = segs().filter(g => g !== sel); sel = null; save(); refresh(); } };
 
+$("acceptAll").onclick = () => {
+  const pend = segs().filter(g => g.prop);
+  if (!pend.length) { alert("No suggestions left in this video."); return; }
+  if (!confirm(`Accept all ${pend.length} remaining suggestion(s) in ${cur}? (Ctrl+Z undoes)`)) return;
+  snap(); pend.forEach(g => { g.prop = false; }); save(); refresh();
+};
 $("exportBtn").onclick = () => {
   // faded suggestions are not exported: say so, so nobody loses segments they meant to keep
   const pending = Object.values(db).reduce((n, d) => n + d.segs.filter(g => g.prop).length, 0);

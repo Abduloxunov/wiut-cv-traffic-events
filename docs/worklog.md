@@ -242,3 +242,6 @@ the samples, annotated by the organisers; they run the unchanged `run_submission
 6 are suggestions never accepted (faded), and Export writes only accepted segments. Fix: accept them (A) and export
 again; the tool now warns on export when unaccepted suggestions remain, bundles rebuilt. Dev scores so far used the
 8-segment file, so C3897 jaywalking "false positives" partly are these unexported labels.
+Added an **"Accept all suggestions"** button (current video, Ctrl+Z undoes) at the lead's request — the lead had
+deleted every wrong suggestion, so all remaining ones are labels. Updated tool copied into the lead's unzipped
+`label_bundles/label_C3897/label_C3897/` (old page kept as label_tool.old.html; work stays in browser storage).
