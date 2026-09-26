@@ -148,3 +148,9 @@ have no accidents, so every alarm is false — the one number we can measure)
   crashes (none in the samples); the next improvement is a bird's-eye-view (metric) ground plane.
 - Part B cannot lower the score (all its terms are ≥ 0); the only risk is runtime, so RiskEstimator uses YOLO26s at
   960 px every 3rd frame and stops inferring if it exceeds 0.25× the video length.
+
+## 27 Sep 2026
+**To do after labelling: redraw the solid lines in `scene/zones.json`.** `solid_line_1` … `solid_line_5` were drawn
+to the edge of the frame, but only the last stretch before the stop lines (about 5–6 m) is actually solid; the rest
+is dashed. Shorten each to the solid part (check on a daylight frame of C3897), otherwise `solid_line_crossing`
+would flag every normal lane change upstream.
