@@ -160,3 +160,8 @@ past the line while the signal is red, so a car that crossed on green and is hel
 turning cars gets flagged once the light turns red. Fix: require the vehicle to *arrive/stop* past the line while
 red (its crossing of the line, or its first still frame there, happens on red), not just to be standing there
 during red. Check against the labels afterwards.
+
+**Rule fix found while labelling: `congestion` fires on partial-lane queues.** The rule counts ≥ 4 still vehicles
+in the junction for ≥ 5 s, so one backed-up lane (often a turn lane) triggers it while the other lanes of that
+direction flow. The definition needs *all lanes of a direction* stopped or crawling. Fix: per direction (lane_dir
+zones), require still/crawling vehicles across every lane of that direction, and ignore queues that clear on green.
