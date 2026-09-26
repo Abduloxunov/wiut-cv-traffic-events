@@ -10,6 +10,8 @@ import json
 import zipfile
 from pathlib import Path
 
+import cv2
+
 TOOL = Path(__file__).with_name("label_tool.html")
 
 START_BAT = '@echo off\r\nstart "" "%~dp0label_tool.html"\r\n'
@@ -37,6 +39,13 @@ Rules
 """
 
 
+def duration(video):
+    cap = cv2.VideoCapture(str(video))
+    d = cap.get(cv2.CAP_PROP_FRAME_COUNT) / (cap.get(cv2.CAP_PROP_FPS) or 29.97)
+    cap.release()
+    return d
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--proxies", default="../proxies")
@@ -54,7 +63,7 @@ def main():
         preload = {"video": video.name, "proposals": {"videos": {video.name: entry}}}
         page = tool.replace("const PRELOAD = null;", "const PRELOAD = " + json.dumps(preload) + ";")
         readme = README.format(video=video.name, stem=video.stem, n=len(entry.get("proposals", [])),
-                               minutes=entry.get("duration", 0) / 60)
+                               minutes=duration(video) / 60)
         zpath = out / f"label_{video.stem}.zip"
         folder = f"label_{video.stem}/"
         with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:

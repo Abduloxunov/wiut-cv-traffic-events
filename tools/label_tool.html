@@ -368,7 +368,9 @@ window.addEventListener("resize", sizeTimeline);
   const q = new URLSearchParams(location.search);
   // each source is imported once, so a reload does not bring back deleted proposals
   let done = []; try { done = JSON.parse(localStorage.getItem(STORE + "-imported") || "[]"); } catch (err) { }
-  if (PRELOAD && !done.includes("bundle:" + PRELOAD.video)) { importJSON(PRELOAD.proposals); done.push("bundle:" + PRELOAD.video); }
+  // keyed by the proposal count too, so a rebuilt bundle with new proposals still imports them
+  const bundleKey = PRELOAD && `bundle:${PRELOAD.video}:${(Object.values(PRELOAD.proposals.videos)[0]?.proposals || []).length}`;
+  if (PRELOAD && !done.includes(bundleKey)) { importJSON(PRELOAD.proposals); done.push(bundleKey); }
   for (const url of q.getAll("import")) {
     if (done.includes(url)) continue;
     try { importJSON(await (await fetch(url)).json()); done.push(url); } catch (err) { $("warn").textContent = "could not import " + url; }
