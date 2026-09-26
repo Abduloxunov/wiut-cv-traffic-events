@@ -220,3 +220,12 @@ Walking on the road (likely missed labels): 1:15.3–1:35.7 between the triangle
 corner along the kerb (2:27–2:36 partly the grass strip = zone error); 2:46.6–2:49.9 far road; 4:12.6–4:13.9;
 4:33.9–4:43.5 far road. Standing at kerbs (likely our false positives, not labels): 0:29.8, 0:58.9–1:03.3,
 1:56–2:16 left kerb by the zebra, 2:37–3:41 top-right corner (one spot, tracks 893/1656), 2:52 bottom edge.
+
+**Detection check: is SAHI-style tiling worth it for jaywalking?** (`experiments/jaywalking/detect_check.py`,
+figures `../figures/07_detection_check/`). On 10 frames of the 5 barely-seen labelled events: people found
+1280 px 358, 1920 px 471, 8 tiles 621; counted on the carriageway 13 / 9 / 29. CPU time per frame 1.5 s / 2.6 s /
+17.6 s (tiles ≈ 12× the current cost). Looking at the frames: the labelled jaywalkers are **already detected at
+1280**; they are missed because they walk right beside the zebra stripes (inside our crossing zone + margin), not
+because they are small. Tiling mostly adds far pavement people and **drivers seen through windscreens** (new false
+"pedestrians" in the road). → No tiling for jaywalking. Label question: people walking just beside the zebra were
+labelled jaywalking (C3897 0:31–0:34), which differs from the earlier "a metre off the stripes = crossing" note.
