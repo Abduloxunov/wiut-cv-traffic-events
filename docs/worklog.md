@@ -211,7 +211,7 @@ New code lives in `src/v2/`; each class is scored alone against the dev labels w
 ### Next actions (running list)
 1. Lead re-checks C3897 1:15–4:06 for jaywalking (island-to-island walkers, kerb walkers) → retune jaywalking v2.
 2. Zones: remove the grass strip from the road polygon (top-right); shorten solid_line_1…5 to the real solid part.
-3. stopped_vehicle v2 (next class): box-overlap persistence instead of track IDs, "queued = moves on its green".
+3. ~~stopped_vehicle v2~~ done (0.83).
 4. Then failure_to_yield v2, congestion v2, stop_line fix, solid_line_crossing, emission gate per class.
 5. Wire v2 classes into `solution.py` once each beats its v1 on the dev labels; T4 timing run; website.
 
@@ -254,3 +254,22 @@ illegal_turn 1. Official format check VALID. To check: the 3 accepted congestion
 0.47** (C3897 0.51, C3902 0.42, C3905 0.52); best case after re-tuning 0.50; leave-one-video-out 0.41 (the bigger
 search overfits — kept the earlier settings). Margin 0 (beside-the-zebra decision) was not chosen by the search;
 0.25 × height still wins, likely because foot points are noisy near the stripes.
+
+**stopped_vehicle v2** (`src/v2/stopped_vehicle.py`, `experiments/stopped_vehicle/`, figures
+`../figures/08_stopped_vehicle/`):
+- Diagnosis: all 4 labelled stopped vehicles are cars **parked at the far kerb** (by the bus stop), standing minutes
+  to the whole video while traffic flows past. v1 missed them: its "≥ 4 other still vehicles = signal queue" filter is
+  almost always true somewhere in the frame, and track IDs switch over minutes.
+- Design (research: AI City stalled-vehicle winners, ATSPM queue logic): static groups from **near-still vehicle
+  boxes linked by overlap (IoU ≥ 0.7) with the group's median box, ignoring track IDs**, surviving 10 s unseen;
+  ≥ 10 s, on the carriageway, not parking/bus bay, not waiting inside the junction; **queue = other still vehicles
+  within 3 widths for ≥ 50 % of its stop AND driving off within 6 s of it** (a queue stands and leaves together; two
+  parked cars leave at unrelated times); stops > 120 s (a signal cycle) are never a queue; starts/ends within 2 s of
+  the video edges snap to 0 / the end; simultaneous stops merge into one segment.
+- Iterations: naive grouping → queues everywhere; + "leave together" test only → 0.74 (junction waits, far queues);
+  + neighbours-stand-with-it test → 0.57 (two parked cars next to each other rejected as a queue);
+  + both conditions → **0.83**.
+- Result: **old 0.00 → v2 0.83** (tIoU 0.3: 4/4 found, 0 false; 0.5 / 0.7: 3 of 4 — C3897's short 0:00.6–0:25.9
+  comes out as 0:07.5–0:41.5). Runs in seconds (vectorised grouping).
+- Only 4 labelled events, so no fine-tuning: one-at-a-time sensitivity keeps the score in 0.67–0.86
+  (`sensitivity.py`), defaults kept.
