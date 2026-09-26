@@ -273,3 +273,20 @@ search overfits — kept the earlier settings). Margin 0 (beside-the-zebra decis
   comes out as 0:07.5–0:41.5). Runs in seconds (vectorised grouping).
 - Only 4 labelled events, so no fine-tuning: one-at-a-time sensitivity keeps the score in 0.67–0.86
   (`sensitivity.py`), defaults kept.
+
+**failure_to_yield v2 — in progress (27 Sep, 04:55)** (`src/v2/failure_to_yield.py`, `experiments/failure_to_yield/`,
+figures `../figures/09_failure_to_yield/`). 11 labelled events (C3897 6, C3902 3, C3905 2), almost all on
+crosswalk_1; 4 of C3897's are 0.6 s long = old-rule timings accepted via "Accept all" (treat their boundaries as weak).
+- Old rule: F1 0.10 (6/11 found at 0.3, ~80 false).
+- v2 "lane" mode (pedestrian within 1 vehicle width sideways of the vehicle's path): 0.08, 114 predictions.
+- v2 "pet" mode (pedestrian spot covered by the vehicle's bottom-band footprint within 2 s): 0.098, 77 predictions.
+- Looked at detections: 0:12.3 C3902 is a real one (car passes in front of people on the zebra). The false ones
+  (C3902 0:29.5, 1:48.1) are **pedestrians standing on the pavement / kerb just beyond the crossing end**, picked up
+  by the 20 px STEP margin around the crossing plus the widened footprint.
+- Next to try: STEP 0 (pedestrian strictly on the crossing polygon and on the carriageway), smaller EXPAND, PET 1–3 s,
+  pedestrian moving (not standing), grid + leave-one-video-out; then per-crossing checks.
+
+### Overnight plan (lead asleep, autonomous run from 05:20)
+Order: finish failure_to_yield → congestion → stop_line fix → solid_line_crossing → near_miss → illegal_turn →
+decide wrong_way / red_light / accident / illegal_u_turn / road_obstacle / fire_smoke (emit or not) → integrate v2
+into solution.py and score everything together against the 0.094 baseline.
