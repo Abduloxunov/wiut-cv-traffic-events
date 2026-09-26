@@ -154,3 +154,9 @@ have no accidents, so every alarm is false — the one number we can measure)
 to the edge of the frame, but only the last stretch before the stop lines (about 5–6 m) is actually solid; the rest
 is dashed. Shorten each to the solid part (check on a daylight frame of C3897), otherwise `solid_line_crossing`
 would flag every normal lane change upstream.
+
+**Rule fix found while labelling: `stop_line` false positive.** `rules.stop_line` flags any vehicle standing still
+past the line while the signal is red, so a car that crossed on green and is held past the line by a queue of
+turning cars gets flagged once the light turns red. Fix: require the vehicle to *arrive/stop* past the line while
+red (its crossing of the line, or its first still frame there, happens on red), not just to be standing there
+during red. Check against the labels afterwards.
