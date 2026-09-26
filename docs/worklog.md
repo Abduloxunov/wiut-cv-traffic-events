@@ -214,3 +214,9 @@ New code lives in `src/v2/`; each class is scored alone against the dev labels w
 3. stopped_vehicle v2 (next class): box-overlap persistence instead of track IDs, "queued = moves on its green".
 4. Then failure_to_yield v2, congestion v2, stop_line fix, solid_line_crossing, emission gate per class.
 5. Wire v2 classes into `solution.py` once each beats its v1 on the dev labels; T4 timing run; website.
+
+**C3897 relabel check list (27 Sep)**: jaywalking v2 moments not in the labels, for the lead to rewatch.
+Walking on the road (likely missed labels): 1:15.3–1:35.7 between the triangle islands; 2:21.6–2:45.7 top-right
+corner along the kerb (2:27–2:36 partly the grass strip = zone error); 2:46.6–2:49.9 far road; 4:12.6–4:13.9;
+4:33.9–4:43.5 far road. Standing at kerbs (likely our false positives, not labels): 0:29.8, 0:58.9–1:03.3,
+1:56–2:16 left kerb by the zebra, 2:37–3:41 top-right corner (one spot, tracks 893/1656), 2:52 bottom edge.
