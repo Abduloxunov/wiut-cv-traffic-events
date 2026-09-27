@@ -27,7 +27,7 @@
     lane violations, illegal turns, congestion. A causal risk score estimates how likely a crash is in the next 5 s.</p>
   <div class="stats">
     <div><b>0.49</b><span>Score A on our labels of the samples (first rules: 0.14)</span></div>
-    <div><b>8</b><span>event classes emitted</span></div>
+    <div><b>9</b><span>event classes emitted</span></div>
     <div><b>4</b><span>sample videos annotated · 19 min</span></div>
     <div><b>~0.04×</b><span>event layer run time vs video length</span></div>
   </div>
@@ -76,8 +76,9 @@
       <tr><td>congestion</td><td>≥ 4 still vehicles in the junction for ≥ 5 s, bridged over 10 s gaps.</td><td>0.29 → 0.36</td></tr>
       <tr><td>failure_to_yield</td><td>Post-encroachment time: a moving vehicle's footprint covers a spot on the crossing that a walking pedestrian occupied within 2 s.</td><td>0.10 → 0.26</td></tr>
       <tr><td>red_light</td><td>The vehicle's front crosses the stop line while its signal has been red for at least 4 s (past any amber, which glows orange-red at dusk) and stays red for 2 s more (not an early start); it drives on through the junction.</td><td>no labelled example · fires only on the one real runner in the 4 samples</td></tr>
+      <tr><td>wrong_way</td><td>On the straight carriageways only (not the junction), motion measured over 2 s runs against our lane arrows for at least 2 s and 3 vehicle lengths.</td><td>no labelled example · silent on the 4 samples, catches 20/20 real tracks played backwards</td></tr>
       <tr><td>solid_line_crossing</td><td>The vehicle's footprint centre crosses (or straddles) the solid stretch of a lane divider.</td><td>0.00 → 0.14</td></tr>
-      <tr class="muted"><td>not emitted</td><td>near_miss, wrong_way, accident, illegal_u_turn, road_obstacle, fire_smoke — no reliable detector on the samples; a predicted class that is absent from the test set would add a zero to the average.</td><td>—</td></tr>
+      <tr class="muted"><td>not emitted</td><td>near_miss, accident, illegal_u_turn, road_obstacle, fire_smoke — no reliable detector on the samples; a predicted class that is absent from the test set would add a zero to the average.</td><td>—</td></tr>
     </tbody>
   </table></div>
   <p class="note">F1 = mean over tIoU 0.3/0.5/0.7 with the official <code>evaluate.py</code>, on our labels of three
@@ -153,7 +154,7 @@
       <tr><td>jaywalking</td><td>one long event split into many short ones (each half caps at tIoU 0.5)</td><td>scene-level signal, k-of-n confirmation, 4 s gap bridging</td><td>0.23 → 0.47</td></tr>
       <tr><td>stop_line</td><td>car crossed on green, then held past the line by turning cars</td><td>must arrive past the line on red</td><td>0.67 → 0.86</td></tr>
       <tr><td>red_light</td><td>amber (orange-red at dusk) read as red; early starters just before green</td><td>crossing counts only on a red settled for 4 s that stays red 2 s more</td><td>fires only on the one real runner</td></tr>
-      <tr><td>wrong_way</td><td>only false positives on the samples</td><td>not emitted</td><td>no zero class</td></tr>
+      <tr><td>wrong_way</td><td>turns off the carriageway and weaving motorcycles counted as wrong way</td><td>only straight carriageways, 2 s window, sustained 2 s and 3 lengths</td><td>silent on the samples; 20/20 on reversed tracks</td></tr>
     </tbody>
   </table></div>
   <p class="note">Other checks: tiling the frame (SAHI-style) does not help jaywalking — the missed people were already

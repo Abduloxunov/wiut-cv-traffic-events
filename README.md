@@ -41,7 +41,8 @@ our own labels of the sample videos (below).
 | failure_to_yield | post-encroachment time: a moving vehicle's footprint covers a spot a walking pedestrian occupied on the crossing within 2 s | 0.26 |
 | solid_line_crossing | vehicle footprint centre crosses (or straddles) the solid stretch of a lane divider | 0.14 |
 | red_light | stop-line crossing while the light has been red >= 4 s (past any amber) and stays red >= 2 s | no labelled example; fires only on the one real runner in the 4 samples |
-| near_miss, wrong_way, accident, illegal_u_turn, road_obstacle, fire_smoke | not emitted: no reliable detector on the samples (an absent class that is predicted adds a zero to the macro average) | — |
+| wrong_way | motion over 2 s against the lane arrows on the straight carriageways, sustained >= 2 s and >= 3 lengths | no labelled example; silent on the 4 samples, 20/20 on real tracks played backwards |
+| near_miss, accident, illegal_u_turn, road_obstacle, fire_smoke | not emitted: no reliable detector on the samples (an absent class that is predicted adds a zero to the macro average) | — |
 
 \*Official `evaluate.py`, mean F1 over tIoU 0.3/0.5/0.7, on our labels of three sample videos (58+ events), with
 settings chosen on the same labels — optimistic; leave-one-video-out numbers are lower (e.g. jaywalking 0.44,
