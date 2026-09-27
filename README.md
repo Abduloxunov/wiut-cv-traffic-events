@@ -1,38 +1,87 @@
 # WIUT Hackathon 2026 — CV track: traffic event detection
 
-Work in progress for the elimination round. Detects traffic events in a fixed road camera
-(`detect_events`) and scores accident risk causally (`RiskEstimator`), per the starter-kit interface.
+Detects traffic events in a fixed 4K road camera (`detect_events`, Part A) and scores accident risk causally
+(`RiskEstimator`, Part B), with the starter-kit interface: `solution.py` + the unchanged `run_submission.py` and
+`evaluate.py`.
+
+## Install and run
+```bash
+pip install -r requirements.txt
+bash weights/download.sh          # once, with internet: YOLO26m + YOLO26s (COCO-pretrained, Ultralytics)
+python run_submission.py --videos /data/test --out predictions.json
+```
+Python 3.10+; runs offline after the weights are fetched. On a machine without a GPU the harness's 3 × duration limit
+is not met (tracking a 4K video on CPU is ~10 × real time); `PART_A_BUDGET` / `RISK_BUDGET` (x duration) only exist
+for local CPU experiments.
+
+## Approach
+```
+video ──> YOLO26m @1280, every 3rd frame ──> ByteTrack (tuned) ──> tracks (+ speed, ground point)
+   │                                                                  │
+   ├─ first frame ─> SIFT + RANSAC homography to the reference view ─> hand-drawn zones in this video's pixels
+   ├─ signal-head crops ─> lamp colour + position ─> traffic-light timeline
+   └──────────────────────────────> event layer v2 (src/v2/, one module per class) ─> [[start, end, label]]
+Part B: every 3rd frame ─> YOLO26s @960 + ByteTrack ─> pairwise closing speed / time-to-contact ─> DRAC ─> risk
+```
+**Learned:** only the detectors (YOLO26m / YOLO26s, COCO-pretrained, used as released — no fine-tuning, no training
+data of ours). **Rule-based:** tracking (ByteTrack), zone alignment (SIFT), traffic-light reading (colour + lamp
+position), every event class, and the Part B risk (a surrogate-safety measure). Rules and their thresholds are tuned on
+our own labels of the sample videos (below).
+
+### Event classes (Part A)
+| Class | Method (src/v2/) | Dev F1* |
+|---|---|---|
+| illegal_turn | origin–destination + lane of origin: left turn to the bottom-left road from any lane but the leftmost | 1.00 |
+| stop_line | vehicle arrives past the stop line while its (readable) signal is red and stops there; ends at green | 0.86 |
+| stopped_vehicle | static groups of near-still vehicle boxes linked by overlap (not by track IDs); a queue = stands and drives off together with its neighbours | 0.83 |
+| jaywalking | scene-level "someone on the carriageway outside a crossing" (perspective-scaled margin, riders excluded), k-of-n confirmation, gap bridging | 0.47 |
+| congestion | ≥ 4 still vehicles in the junction ≥ 5 s, bridged over 10 s gaps | 0.36 |
+| failure_to_yield | post-encroachment time: a moving vehicle's footprint covers a spot a walking pedestrian occupied on the crossing within 2 s | 0.26 |
+| solid_line_crossing | vehicle footprint centre crosses (or straddles) the solid stretch of a lane divider | 0.14 |
+| near_miss, red_light, wrong_way, accident, illegal_u_turn, road_obstacle, fire_smoke | not emitted: no reliable detector on the samples (an absent class that is predicted adds a zero to the macro average) | — |
+
+\*Official `evaluate.py`, mean F1 over tIoU 0.3/0.5/0.7, on our labels of three sample videos (58+ events), with
+settings chosen on the same labels — optimistic; leave-one-video-out numbers are lower (e.g. jaywalking 0.44,
+failure_to_yield 0.22). Overall Score A on these labels: first rule set 0.138 → event layer v2 0.490.
+Work log with every experiment: `docs/worklog.md`; labelling conventions and team decisions: `docs/labeling.md`,
+`labels/notes.md`.
+
+### Part B
+`src/risk.py`: for each pair of road users that are apart now and closing, time to contact at constant velocity and
+the deceleration rate needed to avoid the crash (DRAC, in object sizes / s²), strongest pair, smoothed; calibrated so
+normal sample traffic stays below 0.5 (0 alarms in 7.4 min). The samples contain no accidents, so Part B is not
+validated on real crashes.
+
+### Datasets and licences
+No training in this submission. Models: Ultralytics YOLO26 (AGPL-3.0), COCO-pretrained. Our own labels of the sample
+videos are used only to choose rule thresholds; the footage itself stays within the team (AI Lab data condition).
+
+## Reproducibility
+- Seeds fixed (`SEED = 0`: Python, NumPy, PyTorch; cuDNN deterministic).
+- Non-deterministic: GPU inference order and floating point can change detections slightly, and both parts stop
+  processing frames when their time budget is used up (`PART_A_BUDGET`, `RISK_BUDGET`), so a much slower machine gives
+  fewer frames.
+- `predictions_samples.json`: output of the command above on the sample videos (generated on a GPU machine).
 
 ## Layout
 | Path | What |
 |---|---|
-| `solution.py` | The interface the harness imports (starter kit; being implemented) |
-| `run_submission.py`, `evaluate.py`, `examples/` | Starter kit, unchanged |
-| `src/detect_track.py` | YOLO26 + ByteTrack over a video → `runs/<video>/tracks.csv` + annotated video |
-| `src/scene_stats.py` | EDA from tracks: road/person heatmaps, learned lane directions, counts over time |
-| `tools/zone_editor.html` | Draw the scene layout (road, crossings, stop lines, signals…) → `scene/zones.json` |
-| `tools/label_tool.html` | Label events on a video timeline → `labels.json` in the exact ground-truth format |
-| `src/align.py` | Maps the reference view to each video (SIFT + homography); framing shifts between recordings |
-| `src/check_zones.py` | Renders the zones and checks them against tracked traffic |
-| `src/propose_events.py` | Rule-based event proposals (baseline v0) from tracks + zones |
-| `src/bench_detectors.py` | Label-free comparison of detector / tracker configs |
-| `docs/` | Work log, methods comparison, research notes, labelling guide |
-| `scene/background.jpg` | Reference background (median of sample C3897) that zones are drawn on |
-| `weights/download.sh` | Fetches model weights |
-| `samples/` | Put the sample `.MP4` files here (not committed) |
+| `solution.py` | Harness interface; `EVENT_LAYER=v1` switches back to the first rule set (`src/rules.py`) |
+| `src/tracker.py`, `src/bytetrack_tuned.yaml` | YOLO26 + ByteTrack |
+| `src/scene.py`, `src/align.py`, `scene/` | Zones (`zones.json`, drawn on `background.jpg`) aligned per video |
+| `src/signals.py` | Traffic-light reader |
+| `src/v2/` | Event layer v2: one module per class, `pipeline.py` runs them |
+| `src/risk.py` | Part B risk |
+| `experiments/` | Diagnosis, searches and scoring per class against the dev labels |
+| `tools/` | Zone editor, labelling tool (+ per-video bundles for teammates, local server) |
+| `train/` | Scripts prepared for later training (detector fine-tune, accident verifier); not used by this submission |
+| `docs/` | Work log, research, methods, class notes, labelling guide |
 
-## Setup
-```bash
-pip install -r requirements.txt
-bash weights/download.sh
-```
+## Team
+| Member | Role |
+|---|---|
+| Davlatyor Abduloxunov (lead, U2510299) | Scene zones, labelling and label review, research direction, pipeline decisions |
+| Dilshodbek Tolibjonov (U2510287) | Sample-video labelling (to confirm) |
+| Behruz Xasanov (U2510285) | Sample-video labelling (to confirm) |
 
-## Zone editor
-```bash
-python -m http.server 8765
-# open http://localhost:8765/tools/zone_editor.html, draw, then "Download zones.json" into scene/
-```
-
-## Notes
-- The sample videos are 4K (3840×2160) at 29.97 fps. Camera framing shifts slightly between recordings,
-  so zones drawn on the reference background are aligned to each video by SIFT feature matching + homography.
+Developed with AI coding assistance (Claude); design decisions and labels by the team.

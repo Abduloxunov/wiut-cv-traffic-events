@@ -365,3 +365,19 @@ Defaults: STEP 10 px, PET 2 s, pedestrian speed 0.2–1.5 heights/s, partial < 0
 **End-to-end check:** `run_submission.py` on the 21 s 4K test clip with the v2 layer inside `solution.py`: runs
 without errors, 6 events (v2); the harness then drops them because this CPU laptop needs 583 s for Part A (budget
 63 s) — same as v1 on CPU; the real timing test needs the T4.
+
+**Final combined v2 (all classes, current defaults): Score A 0.490** on the dev labels (v1 0.138); event layer runs in
+5–13 s per 5-min video on this CPU (~0.04 × duration).
+**README rewritten** to the task's required contents: install/run incl. weights, approach (architecture, models,
+learned vs rule-based, per-class method + dev score), datasets/licences, seeds and non-determinism, team and roles
+(teammates' roles marked "to confirm").
+
+### Next actions (updated 27 Sep, morning)
+1. **Lead:** review the crosswalk_3 skip in failure_to_yield (label-driven); confirm teammates' roles in README.
+2. **Lead:** redraw the solid lines (only the stretch next to the stop line is solid) and the grass strip in the
+   road zone → then re-run `experiments/solid_line/search_centre.py` and jaywalking.
+3. **On the lab GPU / T4:** `python run_submission.py --videos samples --out predictions_samples.json` → commit it
+   (required file; reproducibility is 25 % of the code score); also gives the real timing (must be < 3 × duration).
+4. Label C3896 (4th sample, suggestions ready) to check v2 on unseen video.
+5. Website (25 % of the elimination score) — not started.
+6. Make the repo public and tag the submission commit before the deadline (lead's decision).
