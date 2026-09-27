@@ -328,3 +328,16 @@ not; a weak detector can only add). Needs the redrawn solid lines (lead's pendin
 **Emission rule (decided 27 Sep):** emit every class that appears in our sample labels (it is almost surely in the test
 set; any non-zero F1 adds); do not emit classes never seen in the samples unless a detector is reliable (an absent
 class that we predict adds a zero to the macro average).
+
+**near_miss v2 — not emitted** (`src/v2/near_miss.py`, `experiments/near_miss/search.py`): built on the Part B
+estimator (strongest pair's DRAC per update; conflict runs; optional hard-braking check). The two labelled near misses
+(slow turning conflicts in the junction) barely register — max DRAC 1.8 (C3897) and 9.1 (C3905) around them, while
+normal traffic peaks at 21–23 → best F1 0.02. Decision: do not emit near_miss (≈0 F1 adds nothing if present, and an
+absent class we predict adds a zero). Needs a different signal (e.g. sudden deceleration / heading change of a turning
+vehicle next to another) — later.
+
+**illegal_turn v2** (`src/v2/illegal_turn.py`, `experiments/illegal_turn/`): origin–destination + lane of origin.
+Every left turn from approach_1 to the bottom-left road (approach_3) in the 3 videos comes from lane 0 (leftmost,
+lanes counted with the drawn dividers) — except exactly the two labelled illegal turns (C3897 #1147, C3902 #2620),
+which turned left from lane 1. Rule: left turn to the bottom-left road from lane ≥ 1 = turn from the wrong lane.
+Event = leave-approach − 1.5 s … reach exit road + 0.5 s (timing sweep running).
