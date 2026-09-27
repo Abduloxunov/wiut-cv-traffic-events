@@ -26,10 +26,11 @@ DEFAULTS = dict(
     MOVING=0.4,      # box heights per second: slower = waiting, not driving through
     MODE="pet",      # "pet" (footprint + time gap) or "lane" (sideways distance from the path)
     PET=2.0,         # s, largest time gap between pedestrian and vehicle at the same spot
-    EXPAND=0.25,     # x vehicle width added around the footprint ("so close as to be in danger")
+    EXPAND=0.0,     # x vehicle width added around the footprint ("so close as to be in danger")
     LANE=1.0,        # x vehicle width: sideways distance from the vehicle's path (mode "lane")
-    STEP=20,         # px (4K) around the crossing: stepping onto it
+    STEP=10,         # px (4K) around the crossing: stepping onto it
     PED_MIN=3,       # samples a pedestrian must be seen in the window
+    PED_MOVING=0.3,  # box heights per second: pedestrians slower than this (standing / waiting) are ignored
     GAP=0.5,         # s, merge events closer than this
     MIN_LEN=0.3,     # s
 )
@@ -62,11 +63,17 @@ class FailureToYield:
         ys = np.clip(y1 + (y2 - y1) * fy[None, :, None], 0, h - 1).astype(int)
         return mask[ys, xs].reshape(len(rows), -1).mean(axis=1)
 
-    def detect(self, df, explain=False):
+    def pedestrians(self, df):
+        """Person rows that are not riders (cacheable: independent of the parameters)."""
+        ppl = df[df.cls == "person"]
+        return ppl[~self._riders(ppl, df[df.cls.isin(VEHICLES)])]
+
+    def detect(self, df, explain=False, ppl=None):
         p = self.p
         veh = df[df.cls.isin(VEHICLES)]
-        ppl = df[df.cls == "person"]
-        ppl = ppl[~self._riders(ppl, veh)]
+        ppl = self.pedestrians(df) if ppl is None else ppl
+        if p["PED_MOVING"] > 0:
+            ppl = ppl[ppl.speed.fillna(0) >= p["PED_MOVING"]]
         segs, why = [], []
         for name, cw, cw_step in self.crossings:
             on = self._on(veh, cw) >= p["ON_FRAC"]

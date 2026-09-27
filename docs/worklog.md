@@ -290,3 +290,16 @@ crosswalk_1; 4 of C3897's are 0.6 s long = old-rule timings accepted via "Accept
 Order: finish failure_to_yield → congestion → stop_line fix → solid_line_crossing → near_miss → illegal_turn →
 decide wrong_way / red_light / accident / illegal_u_turn / road_obstacle / fire_smoke (emit or not) → integrate v2
 into solution.py and score everything together against the 0.094 baseline.
+
+**failure_to_yield v2 (27 Sep, overnight loop, part 1)** (`src/v2/failure_to_yield.py`, `experiments/failure_to_yield/`,
+figures `../figures/09_failure_to_yield/`). 11 labelled events, almost all on crosswalk_1; 4 of C3897's are 0.6 s
+old-rule timings accepted via "Accept all" (weak boundaries).
+- Old rule 0.10 (~80 false). v2 "lane" test (pedestrian within 1 width of the vehicle path) 0.08, 114 predictions;
+  v2 PET test (pedestrian spot covered by the vehicle's bottom-band footprint within PET s) 0.098, 77 predictions.
+- Looked at detections: false ones were pedestrians standing on the pavement just beyond the crossing end.
+- Added pedestrian-must-be-moving filter + cached rider filtering; grid search (`search.py`): **best 0.21 on all 3,
+  0.17 leave-one-video-out**, 40 predictions (9 of 11 labelled found in some form). Stable choices across folds:
+  EXPAND 0, PET 2 s, PED_MOVING 0.3 — set as defaults.
+- Remaining false alarms: 8 on crosswalk_3 (no labelled event there at all), many on crosswalk_1 in C3905.
+  Rendered examples (`render.py`): fp_cw3_*, fp_cw1_* — to inspect next.
+- Next: inspect those, then consider one-sided PET (pedestrian at the spot *before* the car), per-crossing checks.
