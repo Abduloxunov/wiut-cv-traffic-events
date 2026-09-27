@@ -50,7 +50,7 @@ def worker():
             job.update(progress=round(float(frac), 3), message=msg)
         try:
             result, video, _ = process.run(job["path"], job["dir"], progress=progress)
-            job.update(state="done", progress=1.0, message="Done", result=result,
+            job.update(state="done", progress=1.0, message="Done", result=result, zones=f"/jobs/{jid}/zones.jpg",
                        video=f"/jobs/{jid}/annotated.mp4" if video.exists() else None,
                        json=f"/jobs/{jid}/events.json")
         except ValueError as exc:
@@ -131,10 +131,10 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json({"error": "Unknown or expired job."}, 404)
             with lock:
                 pos = order.index(m.group(1)) if m.group(1) in order else 0
-            out = {k: job.get(k) for k in ("state", "progress", "message", "result", "video", "json")}
+            out = {k: job.get(k) for k in ("state", "progress", "message", "result", "video", "json", "zones")}
             out["position"] = pos
             return self._json(out)
-        m = re.fullmatch(r"/jobs/([0-9a-f]{12})/(annotated\.mp4|events\.json)", self.path.split("?")[0])
+        m = re.fullmatch(r"/jobs/([0-9a-f]{12})/(annotated\.mp4|events\.json|zones\.jpg)", self.path.split("?")[0])
         if m:
             job = jobs.get(m.group(1))
             if job is None:

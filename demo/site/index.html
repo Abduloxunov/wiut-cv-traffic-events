@@ -178,16 +178,27 @@
     For speed on CPU it uses a smaller detector (YOLO26s for clips up to ~50 s, YOLO26n for longer) and 5 frames per
     second, so expect a few minutes. Other cameras run too, but our zones are drawn for this intersection, so their
     events are not meaningful.</p>
-  <div class="upload">
+  <label class="upload" id="drop">
     <input type="file" id="demoFile" accept="video/mp4,video/*">
-    <button class="btn" id="demoRun" disabled>Detect events</button>
-  </div>
+    <span id="dropText"><b>Drop an .mp4 here</b> or click to choose · up to 2 min, 800 MB</span>
+    <button class="btn" id="demoRun" disabled type="button">Detect events</button>
+  </label>
   <div id="demoStatus" class="status" hidden>
+    <ol class="stages" id="stages">
+      <li data-k="upload">Upload</li><li data-k="align">Align our zones</li><li data-k="track">Detect and track</li>
+      <li data-k="events">Find events</li><li data-k="risk">Score risk</li><li data-k="render">Render playback</li>
+    </ol>
     <div class="progress"><div id="demoBar"></div></div>
     <p id="demoMsg"></p>
   </div>
   <div id="demoOut" hidden>
     <p id="demoSummary"></p>
+    <div class="chips" id="demoChips"></div>
+    <div class="grid2">
+      <figure><img id="demoZones" alt="our zones aligned to your video"><figcaption>Our map of the junction, aligned to your video's first frame (SIFT homography).</figcaption></figure>
+      <div><p class="note">If the zones sit on the crossings, lanes and islands of your clip, the events are meaningful.
+        If they do not, the clip is from another view and the events should be ignored.</p></div>
+    </div>
     <video id="demoPlayer" controls playsinline></video>
     <div id="demoTimeline" class="chart"></div>
     <h3>Accident risk (Part B)</h3>

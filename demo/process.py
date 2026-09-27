@@ -78,6 +78,7 @@ def run(video_path, out_dir, progress=lambda frac, msg: None):
     scene = Scene.from_image(canon_first)
     if getattr(scene, "aligned", True) is False:
         notes.append("Could not match this view to our camera; zones are only scaled, so events may be wrong.")
+    _zones_preview(first, scene, sx, sy, out_dir / "zones.jpg")
     rects = signals.boxes(scene)
     rects_small = {k: (int(x1 / sx), int(y1 / sy), int(np.ceil(x2 / sx)), int(np.ceil(y2 / sy)))
                    for k, (x1, y1, x2, y2) in rects.items()}
@@ -122,11 +123,39 @@ def run(video_path, out_dir, progress=lambda frac, msg: None):
     progress(0.9, "Rendering the annotated playback")
     video_out = out_dir / "annotated.mp4"
     _render(kept, events, risk, duration, fps / stride, W, video_out)
+    counts = {}
+    for _, _, lab in events:
+        counts[lab] = counts.get(lab, 0) + 1
     result = {"duration": round(duration, 2), "fps": fps, "processed_frames": len(kept), "events": events,
-              "risk": risk, "notes": notes, "seconds": round(time.time() - t_start, 1)}
+              "counts": counts, "risk": risk, "notes": notes, "seconds": round(time.time() - t_start, 1),
+              "aligned": bool(getattr(scene, "aligned", True)), "resolution": f"{W}x{H}"}
     (out_dir / "events.json").write_text(json.dumps(result, indent=1))
     progress(1.0, "Done")
     return result, video_out, out_dir / "events.json"
+
+
+ZONE_COLORS = {"crosswalk": (255, 255, 255), "island": (120, 120, 255), "sidewalk": (180, 180, 180),
+               "stop_line": (60, 60, 255), "solid_line": (0, 220, 255), "approach": (255, 160, 60),
+               "intersection": (80, 255, 80), "bus_stop": (255, 80, 255), "parking": (200, 120, 0)}
+
+
+def _zones_preview(frame, scene, sx, sy, path):
+    """The uploaded video's first frame with our zones as aligned to it (proof that the scene map fits)."""
+    h, w = frame.shape[:2]
+    img = cv2.resize(frame, (OUT_WIDTH, int(h * OUT_WIDTH / w)))
+    k = OUT_WIDTH / w
+    over = img.copy()
+    for z in scene.shapes:
+        c = ZONE_COLORS.get(z["type"])
+        if c is None:
+            continue
+        pts = (z["points"] / [sx, sy] * k).astype(np.int32)
+        closed = z["type"] not in ("stop_line", "solid_line")
+        if closed and z["type"] in ("crosswalk", "island", "intersection"):
+            cv2.fillPoly(over, [pts], c)
+        cv2.polylines(img, [pts], closed, c, 2, cv2.LINE_AA)
+    img = cv2.addWeighted(over, 0.25, img, 0.75, 0)
+    cv2.imwrite(str(path), img, [cv2.IMWRITE_JPEG_QUALITY, 85])
 
 
 def _render(kept, events, risk, duration, out_fps, W_in, path):

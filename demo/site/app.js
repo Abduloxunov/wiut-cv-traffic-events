@@ -1,6 +1,6 @@
 // Interactive charts for the website: EDA counts, light timeline, event timeline (click = seek), risk curve.
 const VIDEOS = ["C3897", "C3902", "C3905", "C3896"];
-const LABELLED = { C3897: "daylight", C3902: "dusk", C3905: "dusk, jam at the end", C3896: "evening (not labelled)" };
+const LABELLED = { C3897: "daylight", C3902: "dusk", C3905: "dusk, jam at the end", C3896: "daylight (not labelled)" };
 const EV_COLORS = {
   jaywalking: "#22c55e", stopped_vehicle: "#eab308", failure_to_yield: "#14b8a6", congestion: "#3b82f6",
   stop_line: "#fb7185", solid_line_crossing: "#f59e0b", illegal_turn: "#6366f1", near_miss: "#f97316",
@@ -145,18 +145,36 @@ for (const [k, txt] of Object.entries(EX))
   g.innerHTML += `<figure><img src="img/examples/${k}.jpg" alt="${k}" loading="lazy"><figcaption><b>${k}</b> — ${txt}</figcaption></figure>`;
 
 // ---------- live demo ----------
-const fileIn = $("#demoFile"), runBtn = $("#demoRun");
-fileIn.onchange = () => { runBtn.disabled = !fileIn.files.length; };
+const fileIn = $("#demoFile"), runBtn = $("#demoRun"), drop = $("#drop");
+let started = 0;
+fileIn.onchange = () => {
+  runBtn.disabled = !fileIn.files.length;
+  if (fileIn.files.length) $("#dropText").innerHTML = `<b>${fileIn.files[0].name}</b> · ${(fileIn.files[0].size / 1e6).toFixed(0)} MB`;
+};
+["dragover", "dragenter"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", (e) => { if (e.dataTransfer.files.length) { fileIn.files = e.dataTransfer.files; fileIn.onchange(); } });
+const STAGE_OF = (msg) => /Upload/.test(msg) ? "upload" : /Align/.test(msg) ? "align" : /Detect/.test(msg) ? "track"
+  : /events/.test(msg) ? "events" : /risk/.test(msg) ? "risk" : /Render/.test(msg) ? "render" : /Done/.test(msg) ? "all" : null;
 function setStatus(frac, msg) {
   $("#demoStatus").hidden = false;
   $("#demoBar").style.width = `${Math.round(100 * frac)}%`;
-  $("#demoMsg").textContent = msg;
+  let eta = "";
+  if (started && frac > 0.15 && frac < 0.99) {
+    const left = (Date.now() - started) / 1000 * (1 - frac) / (frac - 0.1);
+    eta = ` · about ${left > 90 ? Math.round(left / 60) + " min" : Math.round(left) + " s"} left`;
+  }
+  $("#demoMsg").textContent = msg + eta;
+  const k = STAGE_OF(msg), items = [...document.querySelectorAll("#stages li")];
+  if (!k) return;
+  const idx = k === "all" ? items.length : items.findIndex((li) => li.dataset.k === k);
+  items.forEach((li, i) => { li.className = i < idx ? "done" : i === idx ? "now" : ""; });
 }
 runBtn.onclick = () => {
   const f = fileIn.files[0];
   if (!f) return;
   if (f.size > 800e6) { setStatus(0, "File is larger than 800 MB."); return; }
-  runBtn.disabled = true; $("#demoOut").hidden = true;
+  runBtn.disabled = true; $("#demoOut").hidden = true; started = 0;
   const xhr = new XMLHttpRequest();
   xhr.open("POST", "api/jobs");
   xhr.setRequestHeader("X-Filename", f.name);
@@ -173,7 +191,7 @@ function poll(id) {
   fetch(`api/jobs/${id}`).then((r) => r.json()).then((j) => {
     if (j.error) { setStatus(0, j.error); runBtn.disabled = false; return; }
     if (j.state === "queued") setStatus(0.1, `In the queue (${j.position} ahead of you) — one video is processed at a time.`);
-    else if (j.state === "running") setStatus(0.1 + 0.9 * j.progress, j.message);
+    else if (j.state === "running") { if (!started) started = Date.now(); setStatus(0.1 + 0.9 * j.progress, j.message); }
     if (j.state === "done") { setStatus(1, "Done."); showDemo(j); runBtn.disabled = false; return; }
     if (j.state === "error") { setStatus(0, j.message); runBtn.disabled = false; return; }
     setTimeout(() => poll(id), 2000);
@@ -185,6 +203,10 @@ function showDemo(j) {
   player.src = j.video || "";
   $("#demoSummary").innerHTML = `<b>${d.events.length} events</b> in ${d.duration.toFixed(0)} s of video · ` +
     `${d.processed_frames} frames analysed in ${d.seconds.toFixed(0)} s.` + (d.notes.length ? `<br><small>${d.notes.join(" ")}</small>` : "");
+  $("#demoZones").src = j.zones || "";
+  $("#demoChips").innerHTML = Object.entries(d.counts || {}).map(([k, n]) =>
+    `<span style="background:${EV_COLORS[k] || "#64748b"}">${k.replace(/_/g, " ")} × ${n}</span>`).join("") ||
+    "<span style='background:#64748b'>no events</span>";
   drawTimeline(d, null, player, "#demoTimeline");
   if (d.risk.length) lineChart("#demoRisk", d.risk.map((r) => r[0]), { risk: d.risk.map((r) => r[1]) },
     { ymax: 1, threshold: 0.5, h: 180, colors: { risk: "#ef4444" }, noLegend: true });

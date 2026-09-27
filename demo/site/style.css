@@ -77,3 +77,12 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 32px
 .progress { height: 10px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
 .progress div { height: 100%; width: 0; background: var(--accent); transition: width .4s; }
 .status p { color: var(--muted); font-size: 14px; }
+.upload { cursor: pointer; } .upload.over { border-color: var(--accent); background: #eff6ff; }
+.upload input { max-width: 260px; } #dropText { color: var(--muted); font-size: 14px; flex: 1; min-width: 220px; }
+.stages { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 0 0 12px; counter-reset: st; }
+.stages li { font-size: 13px; padding: 5px 12px; border-radius: 999px; background: #f1f5f9; color: var(--muted); }
+.stages li.now { background: #dbeafe; color: var(--accent); font-weight: 600; }
+.stages li.done { background: #dcfce7; color: #15803d; }
+.stages li.done::before { content: "✓ "; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
+.chips span { font-size: 13px; padding: 4px 12px; border-radius: 999px; color: #fff; }
