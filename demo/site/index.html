@@ -207,7 +207,8 @@
     video down ourselves, so large 4K files only take longer to upload). Our pipeline runs on the server's CPU — zones aligned to your clip, YOLO26 + ByteTrack, the event rules
     and the causal risk score — and returns the events, a clickable timeline, an annotated playback and the risk curve.
     For speed on CPU it uses a smaller detector (YOLO26s for clips up to ~50 s, YOLO26n for longer) and 5 frames per
-    second, so expect a few minutes. Other cameras run too, but our zones are drawn for this intersection, so their
+    second. On this free 2-core server that takes about 4-5x the clip length (a 30 s clip: about 2 minutes);
+    the progress bar shows each stage and the time left. Other cameras run too, but our zones are drawn for this intersection, so their
     events are not meaningful.</p>
   <label class="upload" id="drop">
     <input type="file" id="demoFile" accept="video/mp4,video/*">
