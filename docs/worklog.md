@@ -426,3 +426,7 @@ design/extras 10 %), one-page report. AI Lab proposal already allows publishing 
 - Demo test clips (`../demo_test_clips/`, from the samples, team only): 30 s day 1280, 60 s dusk 480p, 45 s jam 1080p,
   2 min day 1280. The 480p clip found a bug: odd output height (629 px) broke the H.264 writer → heights rounded to
   even; zones still aligned at 480p; 60 s clip in 37.5 s.
+- **Team update (27 Sep):** Muhammadjon Xalimov replaces Dilshodbek Tolibjonov; team = Davlatyor Abduloxunov (lead),
+  Muhammadjon Xalimov, Behruz Xasanov. Website Team section with photos (Behruz: initials placeholder until his photo
+  arrives), GitHub / LinkedIn / portfolio links; README team table updated (student IDs removed from the public README).
+  Still needed: each member's actual contributions and previous projects.

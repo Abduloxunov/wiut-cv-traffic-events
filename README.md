@@ -84,10 +84,10 @@ videos are used only to choose rule thresholds; the footage itself stays within 
 | `docs/` | Work log, research, methods, class notes, labelling guide |
 
 ## Team
-| Member | Role |
-|---|---|
-| Davlatyor Abduloxunov (lead, U2510299) | Scene zones, labelling and label review, research direction, pipeline decisions |
-| Dilshodbek Tolibjonov (U2510287) | Sample-video labelling (to confirm) |
-| Behruz Xasanov (U2510285) | Sample-video labelling (to confirm) |
+| Member | Role | Links |
+|---|---|---|
+| Davlatyor Abduloxunov (lead) | Scene map of the junction, dev-set labelling and review, research direction, pipeline and design decisions, website | [GitHub](https://github.com/Abduloxunov) · [LinkedIn](https://www.linkedin.com/in/abduloxunovdavlatyor) · [Portfolio](https://abduloxunov.github.io/) |
+| Muhammadjon Xalimov | Labelling of the sample videos (dev set) | [GitHub](https://github.com/muxammadjonx07-dev) · [LinkedIn](https://www.linkedin.com/in/%D0%BC%D1%83%D1%85%D0%B0%D0%BC%D0%BC%D0%B0%D0%B4%D0%B6%D0%BE%D0%BD-%D1%85%D0%B0%D0%BB%D0%B8%D0%BC%D0%BE%D0%B2-b85340334) |
+| Behruz Xasanov | Labelling of the sample videos (dev set) | [GitHub](https://github.com/bekhruz-khasanov) |
 
 Developed with AI coding assistance (Claude); design decisions and labels by the team.
