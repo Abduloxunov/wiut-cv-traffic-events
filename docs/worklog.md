@@ -303,3 +303,10 @@ old-rule timings accepted via "Accept all" (weak boundaries).
 - Remaining false alarms: 8 on crosswalk_3 (no labelled event there at all), many on crosswalk_1 in C3905.
   Rendered examples (`render.py`): fp_cw3_*, fp_cw1_* — to inspect next.
 - Next: inspect those, then consider one-sided PET (pedestrian at the spot *before* the car), per-crossing checks.
+
+**stop_line v2** (`src/v2/stop_line.py`, `experiments/stop_line/evaluate_v2.py`): the vehicle must **arrive past the
+line on red** (light red when it first gets past the line; or when it stops, if it was already past at its first
+sighting). Fixes the case found while labelling (crossed on green, then held past the line by turning cars).
+**v1 0.67 → v2 0.86** on the dev labels (3 labelled events, all found at every tIoU; false alarms 3 → 1, the last one
+at the very end of C3902). "not red but not green" (amber) as the arrival condition scored 0.75 → kept "red".
+Note: C3897's stop_line label is an accepted old-rule suggestion (its timing is v1's).
