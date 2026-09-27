@@ -405,3 +405,11 @@ design/extras 10 %), one-page report. AI Lab proposal already allows publishing 
   queue position, 1 h cleanup) + `demo/process.py` (same stages as solution.py; 4K-canonical coordinates; YOLO26s
   ≤ ~50 s clips else YOLO26n, 960 px, 5 fps; annotated playback, events, risk). Tested end to end locally: 21 s 4K
   clip → 4 events, playable video, timeline, risk, table in 47 s on this laptop.
+- Hugging Face: Docker/Gradio Spaces on free CPU now need PRO; only static Spaces are free → hosting decision
+  deferred by the lead ("make it super good locally first"). `tools/build_space.py` builds the Docker Space anyway.
+- Demo polish: aligned-zones preview of the upload, stage checklist + time-left estimate, drag and drop, class chips;
+  tested end to end again (21 s clip → 4 events, zones fit).
+- Site additions: signal cycle (red 33–42 s, green 27–41 s, cycle ≈ 75–80 s; flicker < 3 s ignored), speed
+  distributions, ablations (detector/tracker benchmark + event-layer variants), operator dashboard (116 events in
+  18 min, 6.3/min), 12 s hero loop; C3896 is daylight (brightness 96 like C3897), not evening; no horizontal overflow
+  at 375 px.
