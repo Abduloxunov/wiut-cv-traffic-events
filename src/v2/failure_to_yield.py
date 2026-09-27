@@ -33,10 +33,10 @@ DEFAULTS = dict(
     LANE=1.0,        # x vehicle width: sideways distance from the vehicle's path (mode "lane")
     STEP=10,         # px (4K) around the crossing: stepping onto it
     PED_MIN=3,       # samples a pedestrian must be seen in the window
-    PED_MOVING=0.3,  # box heights per second: pedestrians slower than this (standing / waiting) are ignored
-    PED_MAX=2.5,     # box heights per second: faster is not walking (riders whose vehicle box was missed)
-    PED_REL_H=0.0,   # pedestrian box height / vehicle box height below this = partial box (0 = off)
-    SKIP=(),         # crossing names to ignore
+    PED_MOVING=0.2,  # box heights per second: pedestrians slower than this (standing / waiting) are ignored
+    PED_MAX=1.5,     # box heights per second: faster is not walking (riders whose vehicle box was missed)
+    PED_REL_H=0.5,   # pedestrian box height / vehicle box height below this = partial box (0 = off)
+    SKIP=("crosswalk_3",),  # never labelled there in 12.6 min; every leave-one-video-out fold skips it (review)
     GAP=0.5,         # s, merge events closer than this
     MIN_LEN=0.3,     # s
 )

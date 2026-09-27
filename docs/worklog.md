@@ -354,3 +354,14 @@ on this CPU (up to 0.7×). Fixes: shared vectorised rider test (`src/v2/common.p
 transform instead of a 4K dilation with a 801 px kernel (80 s → 1 s), stopped_vehicle frame loop on arrays instead of
 pandas indexing (58 s → 18 s). Scores unchanged.
 `solution.py` now uses the v2 event layer by default (`EVENT_LAYER=v1` switches back); end-to-end harness check running.
+
+**failure_to_yield v2, round 2:** added walking-speed cap (riders whose vehicle box was missed), partial-box filter
+(pedestrian box < 0.5 × vehicle box height: heads of people behind the car), crossing skip option; grid with cached
+pedestrians. **0.21 → 0.27 on all 3 (0.26 with the chosen defaults), leave-one-video-out 0.17 → 0.22**, 21–30
+predictions for 11 labels. Every fold chose to skip crosswalk_3 (never labelled there in 12.6 min; 8 false alarms
+there) — adopted, **flagged for the lead to review** (label-driven, not from the task definition).
+Defaults: STEP 10 px, PET 2 s, pedestrian speed 0.2–1.5 heights/s, partial < 0.5, vehicle moving ≥ 0.4.
+
+**End-to-end check:** `run_submission.py` on the 21 s 4K test clip with the v2 layer inside `solution.py`: runs
+without errors, 6 events (v2); the harness then drops them because this CPU laptop needs 583 s for Part A (budget
+63 s) — same as v1 on CPU; the real timing test needs the T4.

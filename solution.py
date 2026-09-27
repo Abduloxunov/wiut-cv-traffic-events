@@ -3,7 +3,8 @@ solution.py — the interface the organizers' harness imports (run_submission.py
 
 Part A: detect_events(video_path) -> [[start_sec, end_sec, label], ...]
     YOLO26 + ByteTrack over every 3rd frame -> tracks; hand-drawn scene zones aligned to this video
-    (SIFT homography against the reference background) -> rule-based events per class.
+    (SIFT homography against the reference background) -> event layer v2 (src/v2/: one module per class,
+    tuned on our labelled sample videos) -> [[start, end, label]].
 Part B: RiskEstimator — causal accident risk per frame from tracked pairs (deceleration-to-avoid-crash).
 
 All heavy code lives in src/; see README.md.
@@ -27,9 +28,11 @@ CLASSES: list[str] = [
 ]
 RISK_HORIZON_SEC = 5.0
 
-# Classes we currently emit. Emitting a class that is absent from the test set costs a zero in the
-# macro average, so a class is only listed here once it is reliable on our dev labels.
-ENABLED = ("stopped_vehicle", "jaywalking", "failure_to_yield", "congestion", "wrong_way", "red_light", "stop_line")
+# Event layer: "v2" (src/v2/pipeline.py, default) or "v1" (src/rules.py, the first rule set; fallback).
+# v2 emits the classes seen in our labelled samples (src/v2/pipeline.EMITTED); emitting a class that is absent from
+# the test set costs a zero in the macro average, so classes never seen in the samples are not emitted.
+EVENT_LAYER = os.environ.get("EVENT_LAYER", "v2")
+ENABLED = ("stopped_vehicle", "jaywalking", "failure_to_yield", "congestion", "wrong_way", "red_light", "stop_line")  # v1
 STRIDE = 3                 # process every 3rd frame (10 per second at 30 fps)
 IMGSZ = 1280               # detector input width; smaller loses far pedestrians
 # x duration for tracking; the harness decodes 4K for Part B at ~1.0-1.3x and rules + alignment take the rest.
@@ -94,10 +97,15 @@ def detect_events(video_path: str) -> list[list]:
         light_rows.append({"t_sec": round(t, 3), **signals.states(frame, rects)})
 
     df = add_motion(pd.DataFrame(rows, columns=COLUMNS), fps)
-    events = detect(df, scene, duration, classes=ENABLED, signals=pd.DataFrame(light_rows))
-    print(f"[solution] {Path(video_path).name}: {len(rows)} detections, {len(events)} events, "
+    lights = pd.DataFrame(light_rows)
+    if EVENT_LAYER == "v1":
+        events = [[s, e, label] for s, e, label, _ in detect(df, scene, duration, classes=ENABLED, signals=lights)]
+    else:
+        from v2.pipeline import detect_v2
+        events = detect_v2(df, scene, duration, signals=lights, fps=fps)
+    print(f"[solution] {Path(video_path).name}: {len(rows)} detections, {len(events)} events ({EVENT_LAYER}), "
           f"{time.perf_counter() - t0:.0f}s", file=sys.stderr)
-    return [[s, e, label] for s, e, label, _ in events]
+    return events
 
 
 class RiskEstimator:
