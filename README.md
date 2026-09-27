@@ -60,6 +60,14 @@ validated on real crashes.
 No training in this submission. Models: Ultralytics YOLO26 (AGPL-3.0), COCO-pretrained. Our own labels of the sample
 videos are used only to choose rule thresholds; the footage itself stays within the team (AI Lab data condition).
 
+## Time budget (3x video duration on the T4)
+- Part A: detection + tracking of every 3rd frame (10 Hz) at 1280 px with half precision on the GPU, stopped at
+  `PART_A_BUDGET` = 1.3x the video duration; the traffic lights are read from the same frames (no second pass).
+- Event layer: ~7-22 s per 5-minute video on a laptop CPU (~0.05x).
+- Part B: the harness decodes every frame (~1x on CPU); `RiskEstimator` runs a smaller detector (YOLO26s @960) on
+  every 3rd frame and stops inference at `RISK_BUDGET` = 0.25x, returning its last score for the rest.
+- Total ≈ 1.3 + 0.05 + ~1.25 ≈ 2.6x, under the 3x limit with margin; both budgets are enforced in code.
+
 ## Reproducibility
 - Seeds fixed (`SEED = 0`: Python, NumPy, PyTorch; cuDNN deterministic).
 - Non-deterministic: GPU inference order and floating point can change detections slightly, and both parts stop
@@ -83,7 +91,8 @@ videos are used only to choose rule thresholds; the footage itself stays within 
 | `src/v2/` | Event layer v2: one module per class, `pipeline.py` runs them |
 | `src/risk.py` | Part B risk |
 | `experiments/` | Diagnosis, searches and scoring per class against the dev labels |
-| `tools/` | Zone editor, labelling tool (+ per-video bundles for teammates, local server) |
+| `tools/` | Zone editor, labelling tool (+ per-video bundles, local server), result renders for the website, predictions_samples generator, Space builder |
+| `demo/` | Website (`site/`) and live-demo server (`server.py`, `process.py`, standard library + the same pipeline); deployed as a Hugging Face Space by `tools/build_space.py` |
 | `train/` | Scripts prepared for later training (detector fine-tune, accident verifier); not used by this submission |
 | `docs/` | Work log, research, methods, class notes, labelling guide |
 
