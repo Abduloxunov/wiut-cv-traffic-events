@@ -69,7 +69,7 @@ def main():
     ap.add_argument("--videos", default=str(ROOT.parent / "sample_videos"))
     ap.add_argument("--runs", default=str(ROOT.parent / "runs"))
     ap.add_argument("--out", default=str(ROOT / "predictions_samples.json"))
-    ap.add_argument("--team", default="wiut-cv-traffic-events")
+    ap.add_argument("--team", default="MDB Vision")
     a = ap.parse_args()
     result = {"team": a.team, "videos": {}}
     for path in sorted(Path(a.videos).glob("*.MP4")) + sorted(Path(a.videos).glob("*.mp4")):

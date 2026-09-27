@@ -30,7 +30,7 @@ CMD ["python", "demo/server.py", "--port", "7860"]
 """
 
 README = """---
-title: Traffic Event Detection
+title: MDB Vision - Traffic Events
 emoji: 🚦
 colorFrom: blue
 colorTo: green

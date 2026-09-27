@@ -1,4 +1,4 @@
-# WIUT Hackathon 2026 — CV track: traffic event detection
+# MDB Vision — traffic event detection (WIUT Hackathon 2026, CV track)
 
 Detects traffic events in a fixed 4K road camera (`detect_events`, Part A) and scores accident risk causally
 (`RiskEstimator`, Part B), with the starter-kit interface: `solution.py` + the unchanged `run_submission.py` and
@@ -83,7 +83,7 @@ videos are used only to choose rule thresholds; the footage itself stays within 
 | `train/` | Scripts prepared for later training (detector fine-tune, accident verifier); not used by this submission |
 | `docs/` | Work log, research, methods, class notes, labelling guide |
 
-## Team
+## Team: MDB Vision
 | Member | Role | Links |
 |---|---|---|
 | Davlatyor Abduloxunov (lead) | Scene map of the junction, dev-set labelling and review, research direction, pipeline and design decisions, website | [GitHub](https://github.com/Abduloxunov) · [LinkedIn](https://www.linkedin.com/in/abduloxunovdavlatyor) · [Portfolio](https://abduloxunov.github.io/) |
