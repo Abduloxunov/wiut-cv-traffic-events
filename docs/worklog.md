@@ -436,3 +436,4 @@ design/extras 10 %), one-page report. AI Lab proposal already allows publishing 
   app https://abduloxunov-wiut-traffic-events.hf.space), cpu-basic (2 vCPU). Built and RUNNING; all pages, data,
   videos, photos served; online demo job with the 30 s test clip → 3 events in 134 s (~4.5x clip length); demo text
   now states the processing time. Still private — the lead makes it public.
+- **Space made public** (15:5x): https://abduloxunov-wiut-traffic-events.hf.space — verified anonymously (all 11 sections, timelines, examples). Repo audit before going public: no secrets; footage-derived files in git = scene/background.jpg (median background, needed for zone alignment) and signal-head crops (experiments/data), no people/raw video.
