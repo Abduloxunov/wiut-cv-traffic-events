@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 BASE=https://github.com/ultralytics/assets/releases/download/v8.4.0
-for w in yolo26m.pt yolo26s.pt; do
+for w in yolo26m.pt yolo26s.pt yolo26n.pt; do
   [ -f "$w" ] || curl -L --fail -o "$w" "$BASE/$w"
 done
 echo "weights ready in $(pwd)"

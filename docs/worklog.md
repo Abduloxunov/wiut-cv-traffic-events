@@ -388,3 +388,20 @@ parked car), jaywalking 4, failure_to_yield 8 (0.5–4 s), congestion 4, stop_li
 standing on the lane dividers — the known weak class). Nothing broken; v2 suggestions saved as
 `../runs/jaywalking_v2/proposals_v2_C3896.json` (not put into the labelling bundle, to keep future C3896 labels
 unbiased — lead's choice).
+
+## Website and live demo (27 Sep, day)
+Task PDF deliverables checked: repo (done except predictions_samples.json, T4 timing, public + tag), website with 7
+required sections and a rubric (live demo 30 %, sample visualisations 20 %, EDA 15 %, approach+report 15 %, team 10 %,
+design/extras 10 %), one-page report. AI Lab proposal already allows publishing annotated visualisations (not raw video).
+- `tools/render_results.py`: annotated playback of all 4 samples (boxes by class, active events, timeline strip,
+  risk) + per-video events and Part B risk curve (causal estimator replayed on the saved tracks).
+- `tools/make_site_data.py`: EDA — video facts, counts per class over time, signal_5 timeline, motion heat maps,
+  trajectories coloured by direction with zones; our dev labels for the timelines.
+- `tools/make_site_media.py`: example frame per class, failure-case images.
+- `demo/site/`: the website (single page, no frameworks: approach + pipeline diagram, EDA, results with click-to-seek
+  timelines and prediction-vs-label rows, error analysis, live demo, report, team, links; works on a phone).
+- Live demo: first a Gradio app, dropped at the lead's request (own UI instead). `demo/server.py` (standard library:
+  static site with Range support + `POST /api/jobs` upload, `GET /api/jobs/<id>` progress/results, one job at a time,
+  queue position, 1 h cleanup) + `demo/process.py` (same stages as solution.py; 4K-canonical coordinates; YOLO26s
+  ≤ ~50 s clips else YOLO26n, 960 px, 5 fps; annotated playback, events, risk). Tested end to end locally: 21 s 4K
+  clip → 4 events, playable video, timeline, risk, table in 47 s on this laptop.

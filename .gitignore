@@ -22,3 +22,10 @@ scene/frame_*.jpg
 
 .DS_Store
 Thumbs.db
+
+# Website media built from the sample footage (tools/render_results.py, make_site_data.py, make_site_media.py):
+# published only on the website, not in the code repository
+demo/site/videos/
+demo/site/img/
+demo/site/data/C*.json
+demo/site/data/dev_labels.json

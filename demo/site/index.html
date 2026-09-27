@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Traffic Event Detection — WIUT Hackathon 2026</title>
+<meta name="description" content="Detecting traffic events and accident risk from a fixed intersection camera in Tashkent: approach, EDA, results on the sample videos, live demo and report.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#home">Traffic Events</a>
+  <nav id="nav">
+    <a href="#approach">Approach</a><a href="#eda">EDA</a><a href="#results">Results</a><a href="#analysis">Error analysis</a>
+    <a href="#demo">Live demo</a><a href="#report">Report</a><a href="#team">Team</a><a href="#links">Links</a>
+  </nav>
+</header>
+
+<main>
+<section id="home" class="hero">
+  <p class="kicker">WIUT Hackathon 2026 · Computer Vision track</p>
+  <h1>Every traffic event at a Tashkent intersection, as a time segment — and a warning before a crash.</h1>
+  <p class="lead">From one fixed 4K camera we detect and track every road user, align our map of the junction to each
+    video, and turn trajectories into events: jaywalking, vehicles failing to yield, stopped vehicles, stop-line and
+    lane violations, illegal turns, congestion. A causal risk score estimates how likely a crash is in the next 5 s.</p>
+  <div class="stats">
+    <div><b>0.49</b><span>Score A on our labels of the samples (first rules: 0.14)</span></div>
+    <div><b>7</b><span>event classes emitted</span></div>
+    <div><b>4</b><span>sample videos annotated · 19 min</span></div>
+    <div><b>~0.04×</b><span>event layer run time vs video length</span></div>
+  </div>
+  <p class="cta"><a class="btn" href="#demo">Try the live demo</a><a class="btn ghost" href="#results">See results</a></p>
+</section>
+
+<section id="approach">
+  <h2>Problem and approach</h2>
+  <p>Part A: for each video, return <code>[start, end, label]</code> for 14 event classes, scored by macro F1 over
+    temporal IoU 0.3 / 0.5 / 0.7 — boundaries matter. Part B: a causal per-frame probability that an accident starts
+    within 5 s. Runs offline on a T4 within 3× the video length.</p>
+  <figure class="pipeline" aria-label="pipeline diagram">
+    <svg viewBox="0 0 1000 250" width="100%">
+      <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#64748b"/></marker></defs>
+      <g font-family="Montserrat" font-size="13" text-anchor="middle">
+        <rect x="10" y="95" width="120" height="56" rx="10" class="n"/><text x="70" y="120">4K video</text><text x="70" y="138" class="s">every 3rd frame</text>
+        <rect x="180" y="20" width="170" height="56" rx="10" class="l"/><text x="265" y="45">YOLO26m @1280</text><text x="265" y="63" class="s">learned (COCO)</text>
+        <rect x="180" y="95" width="170" height="56" rx="10" class="r"/><text x="265" y="120">ByteTrack</text><text x="265" y="138" class="s">tracks, speed, ground point</text>
+        <rect x="180" y="170" width="170" height="56" rx="10" class="r"/><text x="265" y="195">SIFT homography</text><text x="265" y="213" class="s">our zones → this video</text>
+        <rect x="400" y="20" width="170" height="56" rx="10" class="r"/><text x="485" y="45">Traffic lights</text><text x="485" y="63" class="s">lamp colour + position</text>
+        <rect x="400" y="120" width="170" height="80" rx="10" class="r"/><text x="485" y="150">Event layer v2</text><text x="485" y="168" class="s">one module per class</text><text x="485" y="186" class="s">gap bridging, k-of-n</text>
+        <rect x="620" y="120" width="160" height="56" rx="10" class="o"/><text x="700" y="145">[start, end, label]</text><text x="700" y="163" class="s">Part A</text>
+        <rect x="620" y="20" width="160" height="56" rx="10" class="r"/><text x="700" y="45">Pair risk (DRAC)</text><text x="700" y="63" class="s">causal, per frame</text>
+        <rect x="830" y="20" width="150" height="56" rx="10" class="o"/><text x="905" y="45">P(crash in 5 s)</text><text x="905" y="63" class="s">Part B</text>
+      </g>
+      <g stroke="#64748b" stroke-width="1.6" fill="none" marker-end="url(#ar)">
+        <path d="M130,123 L178,48"/><path d="M130,123 L178,123"/><path d="M130,123 L178,198"/>
+        <path d="M350,48 L350,48"/><path d="M265,76 L265,93"/><path d="M350,123 L398,150"/><path d="M350,198 L398,170"/>
+        <path d="M350,198 C380,120 380,60 398,48"/><path d="M570,48 L570,48"/><path d="M570,48 C590,90 590,110 570,125"/>
+        <path d="M570,160 L618,148"/><path d="M350,123 C520,100 560,60 618,48"/><path d="M780,48 L828,48"/>
+      </g>
+    </svg>
+    <figcaption><span class="dot l"></span>learned <span class="dot r"></span>rule-based / classical <span class="dot o"></span>output</figcaption>
+  </figure>
+  <div class="grid2">
+    <div>
+      <h3>What is learned, what is rule-based</h3>
+      <ul>
+        <li><b>Learned:</b> only the object detectors, YOLO26m (Part A) and YOLO26s (Part B), COCO-pretrained, used as released.
+          No training on the competition footage.</li>
+        <li><b>Rule-based:</b> tracking, zone alignment, traffic-light reading, every event class and the risk score.
+          Thresholds were chosen on our own frame-level labels of the samples, checked by leaving one video out.</li>
+        <li><b>Why:</b> the samples contain no accidents and only a few examples of most classes — too little to train
+          a video model, but enough to calibrate transparent rules. Winners of comparable challenges (AI City) also won
+          on trajectory rules and segment post-processing, not on bigger backbones.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>The map of the junction</h3>
+      <p>We drew the scene once on a median background: crossings, pavements, islands, lanes with directions, stop
+        line, solid lane dividers, approaches, signal heads. The camera framing shifts by up to ~125 px between
+        recordings, so each video's first frame is matched to the reference with SIFT + RANSAC and the zones are moved
+        by the homography.</p>
+    </div>
+  </div>
+  <h3>Event classes</h3>
+  <div class="tablewrap"><table id="classes">
+    <thead><tr><th>Class</th><th>How we detect it</th><th>Dev F1 (first rules → v2)</th></tr></thead>
+    <tbody>
+      <tr><td>illegal_turn</td><td>Origin → destination + lane of origin: a left turn to the bottom-left road from any lane but the leftmost (all normal left turns came from lane 0).</td><td>0.00 → 1.00</td></tr>
+      <tr><td>stop_line</td><td>The vehicle arrives past the stop line while its signal is red and stops there; the event ends when the light turns green.</td><td>0.67 → 0.86</td></tr>
+      <tr><td>stopped_vehicle</td><td>Near-still vehicle boxes linked by overlap over time (not by tracker IDs, which switch); a signal queue stands and drives off together, a parked car does not.</td><td>0.00 → 0.83</td></tr>
+      <tr><td>jaywalking</td><td>"Someone is on the carriageway outside a crossing" for the whole scene, margin scaled by the person's height, riders excluded, confirmed over 1 s, gaps up to 4 s bridged.</td><td>0.32 → 0.47</td></tr>
+      <tr><td>congestion</td><td>≥ 4 still vehicles in the junction for ≥ 5 s, bridged over 10 s gaps.</td><td>0.29 → 0.36</td></tr>
+      <tr><td>failure_to_yield</td><td>Post-encroachment time: a moving vehicle's footprint covers a spot on the crossing that a walking pedestrian occupied within 2 s.</td><td>0.10 → 0.26</td></tr>
+      <tr><td>solid_line_crossing</td><td>The vehicle's footprint centre crosses (or straddles) the solid stretch of a lane divider.</td><td>0.00 → 0.14</td></tr>
+      <tr class="muted"><td>not emitted</td><td>near_miss, red_light, wrong_way, accident, illegal_u_turn, road_obstacle, fire_smoke — no reliable detector on the samples; a predicted class that is absent from the test set would add a zero to the average.</td><td>—</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">F1 = mean over tIoU 0.3/0.5/0.7 with the official <code>evaluate.py</code>, on our labels of three
+    sample videos; settings chosen on the same labels, so these are optimistic. Leave-one-video-out: jaywalking 0.44,
+    failure_to_yield 0.22.</p>
+</section>
+
+<section id="eda">
+  <h2>EDA of the sample videos</h2>
+  <div class="tablewrap"><table id="facts"><thead><tr><th>Video</th><th>Resolution</th><th>fps</th><th>Duration</th><th>Light</th><th>Tracks (car / person / bus / truck)</th></tr></thead><tbody></tbody></table></div>
+  <div class="picker" id="edaPick"></div>
+  <h3>Road users in view over time <small>(mean per frame, 5 s bins)</small></h3>
+  <div id="countsChart" class="chart"></div>
+  <h3>Vehicle signal (signal_5) over time</h3>
+  <div id="lightChart" class="chart thin"></div>
+  <div class="grid2">
+    <figure><img id="heatImg" alt="motion heat map" loading="lazy"><figcaption>Where road users are: vehicles blue, people orange.</figcaption></figure>
+    <figure><img id="trajImg" alt="vehicle trajectories" loading="lazy"><figcaption>Vehicle trajectories coloured by direction of travel, with our zones.</figcaption></figure>
+  </div>
+  <h3>Findings that shaped the solution</h3>
+  <ul class="findings">
+    <li><b>The view moves between recordings</b> (up to ~125 px) → zones must be aligned per video (SIFT homography), not hard-coded.</li>
+    <li><b>Daylight and dusk</b> (C3897 bright; C3902/C3905 dusk with over-exposed red lamps) → the light reader uses lamp position as well as colour.</li>
+    <li><b>Only two signal heads are readable</b> (pedestrian signal_4, vehicle signal_5, which governs the stop line: 343 of 351 crossings on green).</li>
+    <li><b>The traffic pattern is regular</b>: queues form and release with the signal cycle, so "many still cars" is normal and cannot mean congestion or a stopped vehicle by itself.</li>
+    <li><b>Parked cars</b> stand at the far kerb by the bus stop for whole videos → stopped_vehicle must survive tracker ID switches.</li>
+    <li><b>Left turns</b> to the bottom-left road come from the leftmost lane — except the two labelled illegal turns.</li>
+    <li><b>Hundreds of pedestrians</b> use the crossings each video, many walking beside the stripes or between islands → jaywalking and failure_to_yield need careful geometry.</li>
+  </ul>
+</section>
+
+<section id="results">
+  <h2>Results on the sample videos</h2>
+  <p>Our annotated playback of every sample video (boxes by class, active events, timeline strip), the event
+    timeline — <b>click an event to jump the video to it</b> — and the Part B risk curve. On the three videos we
+    labelled, our labels are drawn as outlines under the predictions.</p>
+  <div class="picker" id="resPick"></div>
+  <video id="player" controls preload="metadata" playsinline></video>
+  <div id="timeline" class="chart"></div>
+  <h3>Accident risk (Part B)</h3>
+  <div id="riskChart" class="chart thin"></div>
+  <p class="note">No accidents occur in the samples; the risk stays below the 0.5 alarm threshold throughout
+    (maximum 0.25–0.44), which is the intended behaviour on normal traffic.</p>
+  <details><summary>Event list</summary><div class="tablewrap"><table id="evTable"><thead><tr><th>start</th><th>end</th><th>label</th></tr></thead><tbody></tbody></table></div></details>
+  <h3>One example of each class we detect</h3>
+  <div class="gallery" id="examples"></div>
+  <h3>Honest failure cases</h3>
+  <div class="gallery fail">
+    <figure><img src="img/fail_moped_rider.jpg" alt="" loading="lazy"><figcaption>A moped rider whose vehicle box was missed counted as a pedestrian (now filtered by walking speed).</figcaption></figure>
+    <figure><img src="img/fail_head_box.jpg" alt="" loading="lazy"><figcaption>A head-only box of a person behind a car put its "feet" under the car (now filtered by box height).</figcaption></figure>
+    <figure><img src="img/fail_kerb_waiting.jpg" alt="" loading="lazy"><figcaption>People waiting at the kerb beside the crossing; an occluded box cut at the chest looks like someone on the road.</figcaption></figure>
+    <figure><img src="img/fail_id_switch.jpg" alt="" loading="lazy"><figcaption>One tracker ID glued across several people — why our events do not rely on long-lived track IDs.</figcaption></figure>
+    <figure><img src="img/fail_windscreen_people.jpg" alt="" loading="lazy"><figcaption>Tiling the 4K frame finds more people — mostly drivers behind windscreens, so we did not adopt it.</figcaption></figure>
+    <figure><img src="img/solid_lines.jpg" alt="" loading="lazy"><figcaption>Our solid lines run to the frame edge, but only the stretch by the stop line is solid — solid_line_crossing stays weak until they are redrawn.</figcaption></figure>
+  </div>
+</section>
+
+<section id="analysis">
+  <h2>Error analysis on our dev labels</h2>
+  <p>We labelled three sample videos ourselves (58+ events, 8 classes) with our own labelling tool and scored every
+    change with the official metric. What moved the score:</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Class</th><th>Main error found</th><th>Fix</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td>stopped_vehicle</td><td>"≥ 4 other still cars = queue" is almost always true somewhere; IDs switch over minutes</td><td>overlap-linked static groups; queue = stands and leaves together</td><td>0.00 → 0.83</td></tr>
+      <tr><td>failure_to_yield</td><td>85 predictions for 7–11 real: pedestrians waiting at the kerb, riders, far half of the crossing</td><td>post-encroachment time on the car's footprint, walking pedestrians only</td><td>0.10 → 0.26, 85 → 21 predictions</td></tr>
+      <tr><td>jaywalking</td><td>one long event split into many short ones (each half caps at tIoU 0.5)</td><td>scene-level signal, k-of-n confirmation, 4 s gap bridging</td><td>0.23 → 0.47</td></tr>
+      <tr><td>stop_line</td><td>car crossed on green, then held past the line by turning cars</td><td>must arrive past the line on red</td><td>0.67 → 0.86</td></tr>
+      <tr><td>red_light, wrong_way</td><td>only false positives on the samples</td><td>not emitted</td><td>removes two zero classes</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Other checks: tiling the frame (SAHI-style) does not help jaywalking — the missed people were already
+    detected at 1280 px; the metric is strict — even our labels shifted by only 2 s score 0.62; random segments score 0.12.</p>
+</section>
+
+<section id="demo">
+  <h2>Live demo</h2>
+  <p>Upload an <b>.mp4 from this intersection camera, up to 2 minutes and 800 MB</b> (longer clips are cut to the first
+    2 minutes). Our pipeline runs on the server's CPU — zones aligned to your clip, YOLO26 + ByteTrack, the event rules
+    and the causal risk score — and returns the events, a clickable timeline, an annotated playback and the risk curve.
+    For speed on CPU it uses a smaller detector (YOLO26s for clips up to ~50 s, YOLO26n for longer) and 5 frames per
+    second, so expect a few minutes. Other cameras run too, but our zones are drawn for this intersection, so their
+    events are not meaningful.</p>
+  <div class="upload">
+    <input type="file" id="demoFile" accept="video/mp4,video/*">
+    <button class="btn" id="demoRun" disabled>Detect events</button>
+  </div>
+  <div id="demoStatus" class="status" hidden>
+    <div class="progress"><div id="demoBar"></div></div>
+    <p id="demoMsg"></p>
+  </div>
+  <div id="demoOut" hidden>
+    <p id="demoSummary"></p>
+    <video id="demoPlayer" controls playsinline></video>
+    <div id="demoTimeline" class="chart"></div>
+    <h3>Accident risk (Part B)</h3>
+    <div id="demoRisk" class="chart thin"></div>
+    <div class="tablewrap"><table id="demoTable"><thead><tr><th>start</th><th>end</th><th>label</th></tr></thead><tbody></tbody></table></div>
+    <p><a id="demoJson" download="events.json">Download events.json</a></p>
+  </div>
+</section>
+
+<section id="report">
+  <h2>Report</h2>
+  <div class="grid3">
+    <div><h3>What we built</h3><p>A detector + tracker + aligned scene map + one transparent rule module per class,
+      a labelling tool with per-video bundles for the team, dev labels for three sample videos, an evaluation harness
+      per class, and a causal pair-risk estimator for Part B. The event layer runs in about 0.04× the video length.</p></div>
+    <div><h3>What worked</h3><ul>
+      <li>Labelling our own dev set early and scoring every change with the official metric.</li>
+      <li>Designs from the research: overlap-linked static groups, post-encroachment time, origin–destination + lane.</li>
+      <li>Segment post-processing (confirmation, gap bridging, merging) — at tIoU 0.7 boundaries matter most.</li>
+      <li>Not emitting classes we cannot detect reliably.</li></ul></div>
+    <div><h3>What did not</h3><ul>
+      <li>near_miss from the risk score: the labelled near misses are slow turning conflicts the score does not see.</li>
+      <li>solid_line_crossing: weak until the solid stretches are redrawn.</li>
+      <li>A per-direction congestion test did not beat the simpler junction rule.</li>
+      <li>Part B cannot be validated: no accidents in the samples.</li></ul></div>
+  </div>
+  <h3>What we would do next</h3>
+  <ul>
+    <li>Validate Part B and an accident verifier on public CCTV crash clips (ACCIDENT benchmark, TAD).</li>
+    <li>Label more video (the fourth sample) and redraw the solid lines; fine-tune the detector on our frames.</li>
+    <li>A near-miss signal from sudden deceleration or heading change of a turning vehicle next to another.</li>
+  </ul>
+</section>
+
+<section id="team">
+  <h2>Team</h2>
+  <div class="team">
+    <div class="card"><h3>Davlatyor Abduloxunov</h3><p class="role">Team lead</p><p>Scene zones, labelling and label review, research direction, pipeline decisions.</p><p class="links"><a href="https://github.com/Abduloxunov">GitHub</a> · <a href="#">LinkedIn</a> · <a href="#">Portfolio</a></p></div>
+    <div class="card"><h3>Dilshodbek Tolibjonov</h3><p class="role">Member</p><p>Sample-video labelling.</p><p class="links"><a href="#">GitHub</a> · <a href="#">LinkedIn</a></p></div>
+    <div class="card"><h3>Behruz Xasanov</h3><p class="role">Member</p><p>Sample-video labelling.</p><p class="links"><a href="#">GitHub</a> · <a href="#">LinkedIn</a></p></div>
+  </div>
+</section>
+
+<section id="links">
+  <h2>Links</h2>
+  <ul class="linklist">
+    <li><a href="https://github.com/Abduloxunov/wiut-cv-traffic-events">Repository</a> — code, README, work log</li>
+    <li><a href="https://github.com/ultralytics/assets/releases/tag/v8.4.0">Weights</a> — YOLO26m / YOLO26s (Ultralytics, AGPL-3.0), fetched by <code>weights/download.sh</code></li>
+    <li><a href="https://github.com/Abduloxunov/wiut-cv-traffic-events/blob/main/predictions_samples.json">predictions_samples.json</a> — our output on the sample videos</li>
+  </ul>
+</section>
+</main>
+<footer>WIUT Hackathon 2026 · CV track · sample footage shown only as our annotated visualisations</footer>
+<script src="app.js"></script>
+</body>
+</html>

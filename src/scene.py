@@ -34,14 +34,18 @@ class Scene:
         """Align the reference zones to a view of this camera (a frame or a background) by SIFT homography."""
         size = image.shape[:2]
         ref = cv2.imread(str(reference_path))
+        aligned = True
         try:
             H, _ = estimate_homography(ref, image)
         except RuntimeError:
             # alignment failed (e.g. a very different view): fall back to scaling the reference to this size
             H = np.diag([size[1] / ref.shape[1], size[0] / ref.shape[0], 1.0])
+            aligned = False
         zones = json.loads(Path(zones_path).read_text())
         shapes = [{**s, "points": warp_points(s["points"], H).astype(np.float32)} for s in zones["shapes"]]
-        return cls(shapes, size)
+        scene = cls(shapes, size)
+        scene.aligned = aligned
+        return scene
 
     def of_type(self, *types):
         return [s for s in self.shapes if s["type"] in types]
