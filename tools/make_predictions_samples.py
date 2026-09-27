@@ -30,7 +30,7 @@ from scene import Scene  # noqa: E402
 from v2.pipeline import detect_v2  # noqa: E402
 
 
-def one(path, runs):
+def one(path, runs, old_risk=None):
     meta = harness.probe(path) if hasattr(harness, "probe") else None
     cap = cv2.VideoCapture(str(path))
     fps = cap.get(cv2.CAP_PROP_FPS)
@@ -39,10 +39,13 @@ def one(path, runs):
                     "n_frames": n, "duration": n / fps}
     ok, first = cap.read()
     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+    if old_risk is not None:  # Part B unchanged: reuse its curve, only re-read the lights for Part A
+        est = None
     scene = Scene.for_video(str(path), background=first)
     rects = signals.boxes(scene)
-    est = solution.RiskEstimator()
-    est.reset({k: meta[k] for k in ("video_id", "fps", "width", "height", "n_frames")})
+    if old_risk is None:
+        est = solution.RiskEstimator()
+        est.reset({k: meta[k] for k in ("video_id", "fps", "width", "height", "n_frames")})
     curve, lights, idx, last = [], [], 0, 0.0
     t0 = time.time()
     while True:
@@ -50,8 +53,12 @@ def one(path, runs):
         if not ok:
             break
         t = idx / fps
-        last = min(1.0, max(0.0, float(est.step(frame, t))))
-        curve.append([round(t, 4), round(last, 4)])
+        if old_risk is None:
+            last = min(1.0, max(0.0, float(est.step(frame, t))))
+            curve.append([round(t, 4), round(last, 4)])
+        if old_risk is not None and idx % solution.STRIDE:
+            idx += 1
+            continue
         if idx % solution.STRIDE == 0:
             lights.append({"t_sec": round(t, 3), **signals.states(frame, rects)})
         idx += 1
@@ -61,7 +68,7 @@ def one(path, runs):
     df = add_motion(pd.read_csv(runs / path.stem / "tracks.csv"), fps)
     events = detect_v2(df, scene, meta["duration"], signals=pd.DataFrame(lights), fps=fps)
     events, problems = harness.clean_events(events, solution.CLASSES, meta["duration"])
-    return {"events": events, "risk": curve}, problems
+    return {"events": events, "risk": curve if old_risk is None else old_risk}, problems
 
 
 def main():
@@ -70,12 +77,14 @@ def main():
     ap.add_argument("--runs", default=str(ROOT.parent / "runs"))
     ap.add_argument("--out", default=str(ROOT / "predictions_samples.json"))
     ap.add_argument("--team", default="MDB Vision")
+    ap.add_argument("--reuse-risk", help="existing predictions file whose Part B curves are kept (Part A redone)")
     a = ap.parse_args()
     result = {"team": a.team, "videos": {}}
     for path in sorted(Path(a.videos).glob("*.MP4")) + sorted(Path(a.videos).glob("*.mp4")):
         if path.name in result["videos"]:
             continue
-        entry, problems = one(path, Path(a.runs))
+        old = json.load(open(a.reuse_risk))["videos"][path.name]["risk"] if a.reuse_risk else None
+        entry, problems = one(path, Path(a.runs), old)
         result["videos"][path.name] = entry
         print(f"[{path.name}] {len(entry['events'])} events, {len(entry['risk'])} risk samples, problems: {problems}")
         Path(a.out).write_text(json.dumps(result, indent=1))

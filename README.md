@@ -1,5 +1,7 @@
 # MDB Vision — traffic event detection (WIUT Hackathon 2026, CV track)
 
+**Website and live demo:** https://abduloxunov-wiut-traffic-events.hf.space
+
 Detects traffic events in a fixed 4K road camera (`detect_events`, Part A) and scores accident risk causally
 (`RiskEstimator`, Part B), with the starter-kit interface: `solution.py` + the unchanged `run_submission.py` and
 `evaluate.py`.
@@ -38,7 +40,8 @@ our own labels of the sample videos (below).
 | congestion | ≥ 4 still vehicles in the junction ≥ 5 s, bridged over 10 s gaps | 0.36 |
 | failure_to_yield | post-encroachment time: a moving vehicle's footprint covers a spot a walking pedestrian occupied on the crossing within 2 s | 0.26 |
 | solid_line_crossing | vehicle footprint centre crosses (or straddles) the solid stretch of a lane divider | 0.14 |
-| near_miss, red_light, wrong_way, accident, illegal_u_turn, road_obstacle, fire_smoke | not emitted: no reliable detector on the samples (an absent class that is predicted adds a zero to the macro average) | — |
+| red_light | stop-line crossing while the light has been red >= 4 s (past any amber) and stays red >= 2 s | no labelled example; fires only on the one real runner in the 4 samples |
+| near_miss, wrong_way, accident, illegal_u_turn, road_obstacle, fire_smoke | not emitted: no reliable detector on the samples (an absent class that is predicted adds a zero to the macro average) | — |
 
 \*Official `evaluate.py`, mean F1 over tIoU 0.3/0.5/0.7, on our labels of three sample videos (58+ events), with
 settings chosen on the same labels — optimistic; leave-one-video-out numbers are lower (e.g. jaywalking 0.44,
