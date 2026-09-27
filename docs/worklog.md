@@ -381,3 +381,10 @@ learned vs rule-based, per-class method + dev score), datasets/licences, seeds a
 4. Label C3896 (4th sample, suggestions ready) to check v2 on unseen video.
 5. Website (25 % of the elimination score) — not started.
 6. Make the repo public and tag the submission commit before the deadline (lead's decision).
+
+**Sanity run on C3896 (4th sample, unlabelled, not used for tuning):** 28 events — stopped_vehicle 1 (0:00–5:05,
+parked car), jaywalking 4, failure_to_yield 8 (0.5–4 s), congestion 4, stop_line 1, illegal_turn 3 (two of them
+15–22 s long: turners waiting in the junction?), solid_line_crossing 7 (several 40–68 s stretches from queued cars
+standing on the lane dividers — the known weak class). Nothing broken; v2 suggestions saved as
+`../runs/jaywalking_v2/proposals_v2_C3896.json` (not put into the labelling bundle, to keep future C3896 labels
+unbiased — lead's choice).
