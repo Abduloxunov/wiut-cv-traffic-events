@@ -28,7 +28,9 @@ DEFAULTS = dict(
     PERSON_MIN=1.0,    # s, shortest on-road run of one pedestrian
     STATIC_SEC=20.0,   # s, a "pedestrian" standing within STATIC_MOVE heights for longer is ignored
     STATIC_MOVE=0.5,
-    GAP=4.0,           # s, bridge gaps between runs (scene level)
+    GAP=3.0,           # s, bridge gaps between runs (scene level)
+    PAD_START=0.0,     # s the event starts earlier (feet leave the kerb before the box is confirmed on the road)
+    PAD_END=1.0,       # s the event ends later (the person is off the road a moment after the last road sample)
     MIN_LEN=3.0,       # s, shortest event
     BORDER=4,          # px, boxes touching the image border are ignored
     PARTIAL=0.0,       # boxes shorter than this x the expected person height at their row are ignored (0 = off)
@@ -85,5 +87,5 @@ class Jaywalking:
         """-> [(start, end, why)] scene-level jaywalking events."""
         p = self.p
         pr = self.person_runs(self.evidence(df))
-        segs = union([(s, e) for s, e, _ in pr], gap=p["GAP"], min_len=p["MIN_LEN"])
+        segs = union([(max(0.0, s - p["PAD_START"]), e + p["PAD_END"]) for s, e, _ in pr], gap=p["GAP"], min_len=p["MIN_LEN"])
         return [(s, e, ", ".join(f"person #{tid}" for a, b, tid in pr if a < e and b > s)[:80]) for s, e in segs]

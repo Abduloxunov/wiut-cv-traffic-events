@@ -465,3 +465,6 @@ detected. Emitted.
 closing fast from apart, then both at rest within 1.5 s for >= 3 s, still fast right at contact (no gradual braking),
 no person-person pairs. On the 4 samples (no accidents) it still fires 3-17 times per video even at the strictest
 setting — mostly tracker ID switches that look like sudden stops. Stopped for time (22:45); stays off.
+**jaywalking boundary tuning (22:50):** end padding (the person is off the road a moment after the last road sample)
++ gap: best PAD_END 1.0 s, GAP 3 s → 0.469 → 0.524 on all 3 videos; chosen by 2 of 3 leave-one-video-out folds;
+LOVO pooled 0.461 (before 0.44–0.46) — a small boundary gain, not overfitting. Adopted.
