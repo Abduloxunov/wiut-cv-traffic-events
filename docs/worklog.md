@@ -437,3 +437,8 @@ design/extras 10 %), one-page report. AI Lab proposal already allows publishing 
   videos, photos served; online demo job with the 30 s test clip → 3 events in 134 s (~4.5x clip length); demo text
   now states the processing time. Still private — the lead makes it public.
 - **Space made public** (15:5x): https://abduloxunov-wiut-traffic-events.hf.space — verified anonymously (all 11 sections, timelines, examples). Repo audit before going public: no secrets; footage-derived files in git = scene/background.jpg (median background, needed for zone alignment) and signal-head crops (experiments/data), no people/raw video.
+- **Public site media check (18:30–19:10):** all 36 media/data files served (200), all 4 sample videos complete
+  (byte sizes match) and seekable, 19/19 images render (the 20th is the demo's zones image, filled after a run),
+  hero loop plays. Found: videos took 20–38 s to start — (1) MP4 index at the end → remuxed with +faststart (renderers
+  now write faststart); (2) the Space container serves files at only ~30–50 KB/s to us while the Hub CDN serves the
+  same file at ~320 KB/s → the site streams videos from the CDN when hosted on the Space. Now 4–8 s to play.
