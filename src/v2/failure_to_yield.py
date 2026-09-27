@@ -11,11 +11,14 @@ lane-cell yielding studies, post-encroachment gating; team decisions in labels/n
      the pedestrian being there. People waiting at the kerb end are never under the footprint; a car that yielded and
      drives on after the pedestrian passed its lane has a large PET; a car cutting in front of / behind a pedestrian
      has a small one. (Mode "lane": the earlier sideways-distance test, kept for comparison.)
-  4. riders (feet inside a vehicle box) and short-lived person detections (< PED_MIN samples) are ignored; events of
-     all crossings are merged per class.
+  4. riders (feet inside a vehicle box, or moving faster than walking: PED_MAX, e.g. a moped whose box was missed),
+     standing people (< PED_MOVING), partial boxes much shorter than the vehicle (< PED_REL_H x its height: heads of
+     people behind the car) and short-lived person detections (< PED_MIN samples) are ignored; events of all crossings
+     are merged per class. SKIP lists crossings to ignore (experiment only).
 """
 import numpy as np
 
+from v2.common import riders
 from v2.segments import union
 
 VEHICLES = {"car", "bus", "truck", "motorcycle"}
@@ -31,6 +34,9 @@ DEFAULTS = dict(
     STEP=10,         # px (4K) around the crossing: stepping onto it
     PED_MIN=3,       # samples a pedestrian must be seen in the window
     PED_MOVING=0.3,  # box heights per second: pedestrians slower than this (standing / waiting) are ignored
+    PED_MAX=2.5,     # box heights per second: faster is not walking (riders whose vehicle box was missed)
+    PED_REL_H=0.0,   # pedestrian box height / vehicle box height below this = partial box (0 = off)
+    SKIP=(),         # crossing names to ignore
     GAP=0.5,         # s, merge events closer than this
     MIN_LEN=0.3,     # s
 )
@@ -43,15 +49,6 @@ class FailureToYield:
         self.crossings = [(c["name"], scene.mask(None, shapes=[c]), scene.mask(None, margin=self.p["STEP"], shapes=[c]))
                           for c in scene.of_type("crosswalk")]
 
-    @staticmethod
-    def _riders(ppl, vehicles):
-        boxes = {f: g[["x1", "y1", "x2", "y2"]].to_numpy() for f, g in vehicles.groupby("frame")}
-        out = np.zeros(len(ppl), bool)
-        for i, (f, x, y) in enumerate(zip(ppl.frame.values, ppl.gx.values, ppl.gy.values)):
-            b = boxes.get(f)
-            if b is not None:
-                out[i] = bool(((b[:, 0] <= x) & (x <= b[:, 2]) & (b[:, 1] <= y) & (y <= b[:, 3] + 10)).any())
-        return out
 
     def _on(self, rows, mask):
         """Share of each vehicle's bottom band that lies on the mask (sampled on a 5 x 3 grid)."""
@@ -66,7 +63,7 @@ class FailureToYield:
     def pedestrians(self, df):
         """Person rows that are not riders (cacheable: independent of the parameters)."""
         ppl = df[df.cls == "person"]
-        return ppl[~self._riders(ppl, df[df.cls.isin(VEHICLES)])]
+        return ppl[~riders(df, ppl)]
 
     def detect(self, df, explain=False, ppl=None):
         p = self.p
@@ -74,8 +71,11 @@ class FailureToYield:
         ppl = self.pedestrians(df) if ppl is None else ppl
         if p["PED_MOVING"] > 0:
             ppl = ppl[ppl.speed.fillna(0) >= p["PED_MOVING"]]
+        ppl = ppl[ppl.speed.fillna(0) <= p["PED_MAX"]]
         segs, why = [], []
         for name, cw, cw_step in self.crossings:
+            if name in p["SKIP"]:
+                continue
             on = self._on(veh, cw) >= p["ON_FRAC"]
             v_on = veh[on]
             h, w = cw.shape
@@ -105,12 +105,13 @@ class FailureToYield:
                     t0, t1 = t.t_sec.min() - p["PET"], t.t_sec.max() + p["PET"]
                     pw = peds[(peds.t_sec >= t0) & (peds.t_sec <= t1)]
                     if len(pw):
-                        P = pw[["gx", "gy", "t_sec"]].to_numpy(float)
+                        P = pw[["gx", "gy", "t_sec", "bh"]].to_numpy(float)
                         e = p["EXPAND"] * width
                         for x1, y1, x2, y2, tv in t[["x1", "y1", "x2", "y2", "t_sec"]].to_numpy(float):
                             top = y2 - p["BAND"] * (y2 - y1)
                             inside = ((P[:, 0] >= x1 - e) & (P[:, 0] <= x2 + e) & (P[:, 1] >= top - e) &
-                                      (P[:, 1] <= y2 + e) & (np.abs(P[:, 2] - tv) <= p["PET"]))
+                                      (P[:, 1] <= y2 + e) & (np.abs(P[:, 2] - tv) <= p["PET"]) &
+                                      (P[:, 3] >= p["PED_REL_H"] * (y2 - y1)))
                             hits += list(pw.track_id.values[inside])
                 if not hits:
                     continue

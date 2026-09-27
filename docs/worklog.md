@@ -341,3 +341,16 @@ Every left turn from approach_1 to the bottom-left road (approach_3) in the 3 vi
 lanes counted with the drawn dividers) — except exactly the two labelled illegal turns (C3897 #1147, C3902 #2620),
 which turned left from lane 1. Rule: left turn to the bottom-left road from lane ≥ 1 = turn from the wrong lane.
 Event = leave-approach − 1.5 s … reach exit road + 0.5 s (timing sweep running).
+illegal_turn timing sweep (PRE 0.5–2.5 s, POST 0–3 s, exit tolerance 200–800 px): F1 1.0 everywhere (2/2, no false
+alarms) — insensitive; defaults kept (PRE 1.5, POST 0.5, 400 px).
+
+**All v2 classes together (`src/v2/pipeline.py`, `experiments/combined/evaluate_all.py`), dev labels, official metric:**
+**Score A v1 0.138 (on the updated labels) → v2 0.483** over 8 classes: illegal_turn 1.00, stop_line 0.86,
+stopped_vehicle 0.83, jaywalking 0.47, congestion 0.36, failure_to_yield 0.21, solid_line_crossing 0.14, near_miss 0
+(labelled, not emitted). Optimistic (tuned on the same labels; per-class leave-one-video-out numbers are lower), but
+the gain is large and in every class. v1's red_light / wrong_way false positives are gone (not emitted).
+**Speed** (needed: tracking 1.3× + Part B ≈ 1× + event layer must fit 3×): first v2 run took 150–224 s per 5-min video
+on this CPU (up to 0.7×). Fixes: shared vectorised rider test (`src/v2/common.py`), illegal_turn exit zone by distance
+transform instead of a 4K dilation with a 801 px kernel (80 s → 1 s), stopped_vehicle frame loop on arrays instead of
+pandas indexing (58 s → 18 s). Scores unchanged.
+`solution.py` now uses the v2 event layer by default (`EVENT_LAYER=v1` switches back); end-to-end harness check running.

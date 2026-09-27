@@ -14,6 +14,7 @@ Design (see docs/research_systems / reports):
 import cv2
 import numpy as np
 
+from v2.common import riders
 from v2.segments import confirm, runs, union
 
 VEHICLE_CLASSES = {"car", "bus", "truck", "motorcycle", "bicycle"}
@@ -45,15 +46,6 @@ class Jaywalking:
         free = (scene.road & ~walk) if self.p["KERB"] else ~walk
         self.dist = cv2.distanceTransform(free.astype(np.uint8), cv2.DIST_L2, 5)
 
-    def _riders(self, ppl, vehicles):
-        """True where a person's feet fall inside a vehicle/bicycle box of the same frame."""
-        boxes = {f: g[["x1", "y1", "x2", "y2"]].to_numpy() for f, g in vehicles.groupby("frame")}
-        out = np.zeros(len(ppl), bool)
-        for i, (f, x, y) in enumerate(zip(ppl.frame.values, ppl.gx.values, ppl.gy.values)):
-            b = boxes.get(f)
-            if b is not None:
-                out[i] = bool(((b[:, 0] <= x) & (x <= b[:, 2]) & (b[:, 1] <= y) & (y <= b[:, 3] + 10)).any())
-        return out
 
     def evidence(self, df):
         """Per person detection: is this a jaywalking sample? Returns the person rows with a boolean `on_road`."""
@@ -68,7 +60,7 @@ class Jaywalking:
         expected = ppl.groupby(rows).bh.transform(lambda b: b.quantile(0.7)).to_numpy()
         whole = ppl.bh.to_numpy() >= p["PARTIAL"] * expected
         border = ((ppl.x1 <= p["BORDER"]) | (ppl.x2 >= w - p["BORDER"]) | (ppl.y2 >= h - p["BORDER"])).to_numpy()
-        rider = self._riders(ppl, df[df.cls.isin(VEHICLE_CLASSES)])
+        rider = riders(df, ppl)
         ppl["on_road"] = on_cw & far & whole & ~border & ~rider
         return ppl
 

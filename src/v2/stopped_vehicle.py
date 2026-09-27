@@ -50,7 +50,11 @@ class StoppedVehicle:
         step = float(np.median(np.diff(allf))) if len(allf) > 1 else 3.0
         boxes = np.zeros((0, 4)); t0 = np.zeros(0); t1 = np.zeros(0); n = np.zeros(0, int); hist = []
         done = []
-        for f, g in veh.groupby("frame"):
+        F = veh.frame.to_numpy()
+        B = veh[["x1", "y1", "x2", "y2"]].to_numpy(float)
+        uniq, first = np.unique(F, return_index=True)          # veh is sorted by frame
+        bounds = list(first) + [len(F)]
+        for k, f in enumerate(uniq):
             t = f / self.fps
             old = t - t1 > p["MAX_GAP"]
             if old.any():
@@ -58,7 +62,7 @@ class StoppedVehicle:
                 keep = ~old
                 boxes, t0, t1, n = boxes[keep], t0[keep], t1[keep], n[keep]
                 hist = [h for h, k in zip(hist, keep) if k]
-            det = g[["x1", "y1", "x2", "y2"]].to_numpy(float)
+            det = B[bounds[k]:bounds[k + 1]]
             if len(boxes):
                 ix = np.clip(np.minimum(det[:, None, 2], boxes[None, :, 2]) - np.maximum(det[:, None, 0], boxes[None, :, 0]), 0, None)
                 iy = np.clip(np.minimum(det[:, None, 3], boxes[None, :, 3]) - np.maximum(det[:, None, 1], boxes[None, :, 1]), 0, None)
