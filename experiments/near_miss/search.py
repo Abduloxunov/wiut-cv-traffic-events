@@ -2,7 +2,7 @@
 import itertools, json, pickle
 import numpy as np
 from common import *
-from v2.near_miss import NearMiss, replay
+from near_miss_prototype import NearMiss, replay
 data = pickle.load(open(DATA / "runs/jaywalking_v2/cache.pkl", "rb"))
 gts = {v: json.load(open(DATA / "label_bundles" / LABELS[v], encoding="utf-8"))[v] for v in LABELS}
 L = "near_miss"; V = list(LABELS)

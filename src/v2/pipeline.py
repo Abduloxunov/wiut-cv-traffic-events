@@ -5,7 +5,7 @@ Classes and why they are (not) emitted -- see docs/worklog.md for the numbers on
            solid_line_crossing (weak, but present in every sample video), illegal_turn,
            red_light (strict: settled red; fires only on the one real runner in the four samples),
            wrong_way (strict: sustained, on the straight carriageways; silent on the samples, 20/20 on reversed tracks)
-  not emitted: near_miss (no working signal yet),
+  not emitted (prototypes in experiments/): near_miss (no working signal yet),
            accident, illegal_u_turn, road_obstacle, fire_smoke (never seen in the samples; an absent class that we
            predict adds a zero to the macro average)
 """
