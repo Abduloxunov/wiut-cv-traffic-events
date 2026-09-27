@@ -87,7 +87,13 @@ def main():
         tracks = df.groupby("cls").track_id.nunique().to_dict()
         sig = pd.read_csv(runs / "signals" / f"{v}.csv") if (runs / "signals" / f"{v}.csv").exists() else None
         lights = sig[["t_sec", "signal_5"]].values.tolist() if sig is not None and "signal_5" in sig else []
+        edges = np.arange(0, 3.01, 0.1)
+        speeds = {}
+        for name, sel in [("vehicles", df.cls.isin(VEHICLES)), ("people", df.cls == "person")]:
+            sp = df[sel].groupby("track_id").speed.median().dropna()
+            speeds[name] = np.histogram(sp.clip(upper=2.99), bins=edges)[0].tolist()
         eda[v] = {"resolution": "3840x2160", "fps": fps, "duration": round(dur, 1),
+                  "speed_edges": [round(float(e), 1) for e in edges], "speeds": speeds,
                   "brightness": round(float(cv2.cvtColor(bg, cv2.COLOR_BGR2GRAY).mean()), 1),
                   "bins": [int(b) for b in per_frame.index], "counts": counts,
                   "tracks": {k: int(x) for k, x in tracks.items()},

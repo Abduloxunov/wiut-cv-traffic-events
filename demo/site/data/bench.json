@@ -1,0 +1,88 @@
+{
+ "video": "C3897.MP4",
+ "start": 60.0,
+ "duration": 20.0,
+ "stride": 3,
+ "results": {
+  "yolo26m@1280+bytetrack": {
+   "infer_fps_cpu": 0.82,
+   "dets_per_frame": {
+    "person": 26.2,
+    "bicycle": 0.0,
+    "car": 19.6,
+    "motorcycle": 0.0,
+    "bus": 1.8,
+    "truck": 1.0
+   },
+   "tracks": 110,
+   "median_track_len": 69.0,
+   "fragments_lt5": 0.055,
+   "agree_f1_vehicles": 1.0,
+   "agree_f1_person": 1.0
+  },
+  "yolo26s@1280+bytetrack": {
+   "infer_fps_cpu": 1.61,
+   "dets_per_frame": {
+    "person": 21.4,
+    "bicycle": 0.0,
+    "car": 19.6,
+    "motorcycle": 0.0,
+    "bus": 1.3,
+    "truck": 0.4
+   },
+   "tracks": 101,
+   "median_track_len": 55.0,
+   "fragments_lt5": 0.079,
+   "agree_f1_vehicles": 0.95,
+   "agree_f1_person": 0.868
+  },
+  "yolo26s@1280+botsort": {
+   "infer_fps_cpu": 1.08,
+   "dets_per_frame": {
+    "person": 23.8,
+    "bicycle": 0.0,
+    "car": 19.9,
+    "motorcycle": 0.0,
+    "bus": 1.3,
+    "truck": 0.5
+   },
+   "tracks": 123,
+   "median_track_len": 38.0,
+   "fragments_lt5": 0.163,
+   "agree_f1_vehicles": 0.941,
+   "agree_f1_person": 0.909
+  },
+  "yolo26s@960+bytetrack": {
+   "infer_fps_cpu": 1.3,
+   "dets_per_frame": {
+    "person": 16.2,
+    "bicycle": 0.0,
+    "car": 17.7,
+    "motorcycle": 0.0,
+    "bus": 1.5,
+    "truck": 0.7
+   },
+   "tracks": 90,
+   "median_track_len": 55.0,
+   "fragments_lt5": 0.1,
+   "agree_f1_vehicles": 0.915,
+   "agree_f1_person": 0.743
+  },
+  "yolo26n@1280+bytetrack": {
+   "infer_fps_cpu": 1.57,
+   "dets_per_frame": {
+    "person": 16.3,
+    "bicycle": 0.0,
+    "car": 17.1,
+    "motorcycle": 0.0,
+    "bus": 1.1,
+    "truck": 0.2
+   },
+   "tracks": 85,
+   "median_track_len": 57.0,
+   "fragments_lt5": 0.059,
+   "agree_f1_vehicles": 0.894,
+   "agree_f1_person": 0.751
+  }
+ }
+}

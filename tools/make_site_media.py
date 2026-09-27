@@ -50,6 +50,12 @@ def main():
         if ok:
             cv2.imwrite(str(site / "img" / "examples" / f"{label}.jpg"), frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
             print(label, v, round(s, 1), round(e, 1))
+    # 12 s muted loop for the top of the page
+    import subprocess
+    import imageio_ffmpeg
+    subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), "-loglevel", "error", "-y", "-ss", "36", "-t", "12", "-i",
+                    str(site / "videos" / "C3897.mp4"), "-vf", "scale=960:-2", "-an", "-c:v", "libx264", "-crf", "30",
+                    "-preset", "veryfast", "-movflags", "+faststart", str(site / "videos" / "hero.mp4")], check=True)
     for name, src in FAILURES.items():
         p = Path(a.figures) / src
         if p.exists():

@@ -86,3 +86,4 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 32px
 .stages li.done::before { content: "✓ "; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
 .chips span { font-size: 13px; padding: 4px 12px; border-radius: 999px; color: #fff; }
+.hero-video { width: 100%; border-radius: 14px; margin-top: 8px; }

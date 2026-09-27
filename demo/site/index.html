@@ -13,7 +13,7 @@
 <header class="top">
   <a class="brand" href="#home">Traffic Events</a>
   <nav id="nav">
-    <a href="#approach">Approach</a><a href="#eda">EDA</a><a href="#results">Results</a><a href="#analysis">Error analysis</a>
+    <a href="#approach">Approach</a><a href="#eda">EDA</a><a href="#results">Results</a><a href="#analysis">Error analysis</a><a href="#ablations">Ablations</a><a href="#dashboard">Dashboard</a>
     <a href="#demo">Live demo</a><a href="#report">Report</a><a href="#team">Team</a><a href="#links">Links</a>
   </nav>
 </header>
@@ -32,6 +32,7 @@
     <div><b>~0.04×</b><span>event layer run time vs video length</span></div>
   </div>
   <p class="cta"><a class="btn" href="#demo">Try the live demo</a><a class="btn ghost" href="#results">See results</a></p>
+  <video class="hero-video" src="videos/hero.mp4" autoplay muted loop playsinline aria-label="our annotated output, 12 s loop"></video>
 </section>
 
 <section id="approach">
@@ -110,6 +111,11 @@
   <div id="countsChart" class="chart"></div>
   <h3>Vehicle signal (signal_5) over time</h3>
   <div id="lightChart" class="chart thin"></div>
+  <p class="note" id="cycleStats"></p>
+  <h3>How fast road users move <small>(median speed per track, in its own box heights per second: no calibration needed)</small></h3>
+  <div id="speedChart" class="chart"></div>
+  <p class="note">Vehicles split into a standing mode (queues, parked cars) and a moving mode; people mostly walk at
+    0.3-1 heights/s. These ranges set our thresholds: "still" below 0.12-0.15, "walking" 0.2-1.5, faster people are riders.</p>
   <div class="grid2">
     <figure><img id="heatImg" alt="motion heat map" loading="lazy"><figcaption>Where road users are: vehicles blue, people orange.</figcaption></figure>
     <figure><img id="trajImg" alt="vehicle trajectories" loading="lazy"><figcaption>Vehicle trajectories coloured by direction of travel, with our zones.</figcaption></figure>
@@ -119,6 +125,7 @@
     <li><b>The view moves between recordings</b> (up to ~125 px) → zones must be aligned per video (SIFT homography), not hard-coded.</li>
     <li><b>Daylight and dusk</b> (C3897 bright; C3902/C3905 dusk with over-exposed red lamps) → the light reader uses lamp position as well as colour.</li>
     <li><b>Only two signal heads are readable</b> (pedestrian signal_4, vehicle signal_5, which governs the stop line: 343 of 351 crossings on green).</li>
+    <li><b>The signal cycle is about 75-80 s</b> (red 33-42 s, green 27-41 s on signal_5), so a queue that clears within one cycle is normal traffic.</li>
     <li><b>The traffic pattern is regular</b>: queues form and release with the signal cycle, so "many still cars" is normal and cannot mean congestion or a stopped vehicle by itself.</li>
     <li><b>Parked cars</b> stand at the far kerb by the bus stop for whole videos → stopped_vehicle must survive tracker ID switches.</li>
     <li><b>Left turns</b> to the bottom-left road come from the leftmost lane — except the two labelled illegal turns.</li>
@@ -168,6 +175,49 @@
   </table></div>
   <p class="note">Other checks: tiling the frame (SAHI-style) does not help jaywalking — the missed people were already
     detected at 1280 px; the metric is strict — even our labels shifted by only 2 s score 0.62; random segments score 0.12.</p>
+</section>
+
+<section id="ablations">
+  <h2>Ablations</h2>
+  <h3>Detector and tracker <small>(C3897 1:00-1:20, every 3rd frame, CPU; agreement = F1 of boxes vs YOLO26m, a label-free proxy)</small></h3>
+  <div class="tablewrap"><table id="benchTable"><thead><tr><th>Config</th><th>CPU fps</th><th>people / frame</th><th>cars / frame</th>
+    <th>agree vehicles</th><th>agree people</th><th>tracks</th><th>median track length</th><th>fragments</th></tr></thead><tbody></tbody></table></div>
+  <p class="note">YOLO26m at 1280 px keeps the far pedestrians (26 per frame vs 16 for the smaller models) and gives
+    the longest, least fragmented tracks with ByteTrack; our submission uses it on the T4. BoT-SORT fragmented more.
+    The demo uses YOLO26s / YOLO26n for CPU speed.</p>
+  <h3>Event-layer design choices <small>(official metric on our dev labels)</small></h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Class</th><th>Variant</th><th>F1</th></tr></thead>
+    <tbody>
+      <tr><td>jaywalking</td><td>first rules (per person, no bridging)</td><td>0.23</td></tr>
+      <tr><td></td><td>scene-level signal, untuned settings</td><td>0.09</td></tr>
+      <tr><td></td><td>+ tuned confirmation, 4 s gap bridging, 3 s minimum (leave-one-video-out)</td><td>0.44-0.46</td></tr>
+      <tr><td></td><td>+ distance to any kerb, + partial-box filter (flipped between folds, kept off)</td><td>0.43</td></tr>
+      <tr><td>failure_to_yield</td><td>first rules (pedestrian near the vehicle)</td><td>0.10</td></tr>
+      <tr><td></td><td>pedestrian within one lane of the vehicle's path</td><td>0.08</td></tr>
+      <tr><td></td><td>post-encroachment time on the vehicle footprint</td><td>0.10</td></tr>
+      <tr><td></td><td>+ walking pedestrians only (leave-one-video-out 0.17)</td><td>0.21</td></tr>
+      <tr><td></td><td>+ rider speed cap, partial boxes, skip crosswalk_3 (leave-one-video-out 0.22)</td><td>0.26</td></tr>
+      <tr><td>stopped_vehicle</td><td>first rules (track IDs + "4 or more still cars = queue")</td><td>0.00</td></tr>
+      <tr><td></td><td>overlap-linked groups + "drives off together" only</td><td>0.74</td></tr>
+      <tr><td></td><td>+ "neighbours stand with it" only</td><td>0.57</td></tr>
+      <tr><td></td><td>both conditions (one-at-a-time sensitivity 0.67-0.86)</td><td>0.83</td></tr>
+      <tr><td>solid_line_crossing</td><td>box corners as wheels</td><td>0.11</td></tr>
+      <tr><td></td><td>footprint centre + straddling</td><td>0.14</td></tr>
+      <tr><td>detection</td><td>4K tiles (SAHI-style) instead of 1280 px, on the missed jaywalking events</td><td>12x slower, no gain</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="dashboard">
+  <h2>Operator dashboard</h2>
+  <p>What a traffic centre would see for this camera over the four sample recordings: events per class, how often
+    they happen, and the busiest minutes.</p>
+  <div id="dashCards" class="stats"></div>
+  <h3>Events per class and recording</h3>
+  <div id="dashChart" class="chart"></div>
+  <h3>Events per minute</h3>
+  <div id="dashMinute" class="chart"></div>
 </section>
 
 <section id="demo">

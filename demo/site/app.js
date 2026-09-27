@@ -77,6 +77,25 @@ fetch("data/eda.json").then((r) => r.json()).then((eda) => {
       const c = { red: "#ef4444", green: "#22c55e", amber: "#f59e0b", yellow: "#f59e0b" }[L[i][1]] || "#cbd5e1";
       el("rect", { x: 1000 * L[i][0] / dur, y: 8, width: Math.max(1, 1000 * (L[i + 1][0] - L[i][0]) / dur) + 0.5, height: 24, fill: c }, svg);
     }
+    // signal phases: run lengths of red / green
+    // a phase change only counts when the new state holds for >= 3 s (shorter = reader flicker)
+    const runs = { red: [], green: [] };
+    const seq = L.filter(([, st]) => st === "red" || st === "green");
+    let cur = null, t0 = 0;
+    for (let i = 0; i < seq.length; i++) {
+      const [t, st] = seq[i];
+      if (st === cur) continue;
+      const holds = seq.filter(([tt, s2]) => tt >= t && tt < t + 3).every(([, s2]) => s2 === st);
+      if (!holds) continue;
+      if (cur in runs && t0 > 0) runs[cur].push(t - t0);
+      cur = st; t0 = t;
+    }
+    const mean = (a) => a.length ? (a.reduce((x, y) => x + y, 0) / a.length).toFixed(0) : "-";
+    $("#cycleStats").textContent = `signal_5 in ${v}: ${runs.red.length} full red phases (mean ${mean(runs.red)} s), ` +
+      `${runs.green.length} full green phases (mean ${mean(runs.green)} s).`;
+    const edges = d.speed_edges.slice(0, -1);
+    barChart("#speedChart", edges.map((x) => x.toFixed(1)), { vehicles: d.speeds.vehicles, people: d.speeds.people },
+      { vehicles: "#3b82f6", people: "#f97316" });
     $("#heatImg").src = `img/heat_${v}.jpg`;
     $("#trajImg").src = `img/traj_${v}.jpg`;
   });
@@ -219,3 +238,59 @@ function showDemo(j) {
   });
   $("#demoJson").href = j.json;
 }
+
+// ---------- grouped bar chart ----------
+function barChart(target, cats, series, colors, opts = {}) {
+  const W = 1000, H = opts.h || 240, L = 40, B = 28, T = 10, R = 10;
+  const names = Object.keys(series), ymax = Math.max(1, ...names.flatMap((n) => series[n]));
+  const box = $(target); box.innerHTML = "";
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}` }, box);
+  const cw = (W - L - R) / cats.length, bw = cw * 0.8 / names.length;
+  for (let k = 0; k <= 4; k++) {
+    const y = T + (H - T - B) * (1 - k / 4);
+    el("line", { x1: L, x2: W - R, y1: y, y2: y, stroke: "#e2e8f0" }, svg);
+    el("text", { x: L - 6, y: y + 4, "text-anchor": "end", "font-size": 11, fill: "#64748b" }, svg).textContent = Math.round(ymax * k / 4);
+  }
+  cats.forEach((c, i) => {
+    names.forEach((n, j) => {
+      const v = series[n][i] || 0, h = (H - T - B) * v / ymax;
+      const r = el("rect", { x: L + i * cw + cw * 0.1 + j * bw, y: T + (H - T - B) - h, width: bw, height: h, fill: colors[n] || "#2563eb", rx: 2 }, svg);
+      el("title", {}, r).textContent = `${n} ${c}: ${v}`;
+    });
+    if (cats.length <= 12 || i % Math.ceil(cats.length / 15) === 0)
+      el("text", { x: L + i * cw + cw / 2, y: H - 8, "text-anchor": "middle", "font-size": 11, fill: "#64748b" }, svg).textContent = c;
+  });
+  const legend = document.createElement("div"); legend.className = "legend";
+  legend.innerHTML = names.map((n) => `<span><i style="background:${colors[n]}"></i>${n}</span>`).join("");
+  box.appendChild(legend);
+}
+
+// ---------- ablation table ----------
+fetch("data/bench.json").then((r) => r.json()).then((b) => {
+  const tb = $("#benchTable tbody");
+  for (const [k, v] of Object.entries(b.results))
+    tb.innerHTML += `<tr><td>${k.replace("@", " @").replace("+", " + ")}</td><td>${v.infer_fps_cpu}</td><td>${v.dets_per_frame.person}</td>
+      <td>${v.dets_per_frame.car}</td><td>${v.agree_f1_vehicles}</td><td>${v.agree_f1_person}</td><td>${v.tracks}</td>
+      <td>${v.median_track_len}</td><td>${(100 * v.fragments_lt5).toFixed(1)}%</td></tr>`;
+});
+
+// ---------- operator dashboard ----------
+const VCOL = { C3897: "#2563eb", C3902: "#7c3aed", C3905: "#0891b2", C3896: "#f59e0b" };
+Promise.all(VIDEOS.map((v) => fetch(`data/${v}.json`).then((r) => r.json()))).then((all) => {
+  const classes = [...new Set(all.flatMap((d) => d.events.map((e) => e[2])))].sort();
+  const totalMin = all.reduce((a, d) => a + d.duration, 0) / 60;
+  const nEv = all.reduce((a, d) => a + d.events.length, 0);
+  const per = Object.fromEntries(classes.map((c) => [c, all.reduce((a, d) => a + d.events.filter((e) => e[2] === c).length, 0)]));
+  const top = Object.entries(per).sort((a, b) => b[1] - a[1])[0];
+  const maxRisk = Math.max(...all.flatMap((d) => d.risk.map((r) => r[1])));
+  $("#dashCards").innerHTML = `<div><b>${nEv}</b><span>events in ${totalMin.toFixed(0)} min of video</span></div>
+    <div><b>${(nEv / totalMin).toFixed(1)}</b><span>events per minute</span></div>
+    <div><b>${top[0].replace(/_/g, " ")}</b><span>most frequent (${top[1]})</span></div>
+    <div><b>${maxRisk.toFixed(2)}</b><span>highest crash risk (alarm at 0.50)</span></div>`;
+  const series = Object.fromEntries(VIDEOS.map((v, i) => [v, classes.map((c) => all[i].events.filter((e) => e[2] === c).length)]));
+  barChart("#dashChart", classes.map((c) => c.replace(/_/g, " ")), series, VCOL);
+  const mins = Math.ceil(Math.max(...all.map((d) => d.duration)) / 60);
+  const perMin = Object.fromEntries(VIDEOS.map((v, i) => [v, Array.from({ length: mins }, (_, m) =>
+    all[i].events.filter((e) => e[0] >= 60 * m && e[0] < 60 * (m + 1)).length)]));
+  barChart("#dashMinute", Array.from({ length: mins }, (_, m) => `${m}:00`), perMin, VCOL);
+});
