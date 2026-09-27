@@ -468,3 +468,10 @@ setting — mostly tracker ID switches that look like sudden stops. Stopped for 
 **jaywalking boundary tuning (22:50):** end padding (the person is off the road a moment after the last road sample)
 + gap: best PAD_END 1.0 s, GAP 3 s → 0.469 → 0.524 on all 3 videos; chosen by 2 of 3 leave-one-video-out folds;
 LOVO pooled 0.461 (before 0.44–0.46) — a small boundary gain, not overfitting. Adopted.
+
+## 2026-09-27 23:30 — failure_to_yield boundary padding (branch `improve-fty`, not merged)
+- Idea (tIoU scoring, boundary precision dominates): the PET footprint event starts when the box's bottom band reaches the zebra, the labels start when the vehicle front does -> start the segment earlier.
+- Grid over PRE/POST/GAP/MIN_LEN on raw segments; LOVO on C3897/C3902/C3905: PRE 0.3 chosen in every fold.
+- Result: FTY 0.26 -> 0.33 (all 3), LOVO 0.22 -> 0.29; combined Score A 0.497 -> 0.506. New defaults PRE 0.3, GAP 2.0.
+- predictions_samples.json FTY events recomputed from the saved tracks (FTY does not use the lights): 111 events, VALID.
+- Next actions: the user decides whether to merge into main / move the tag v1.0-elimination / update the Space.

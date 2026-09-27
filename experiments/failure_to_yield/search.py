@@ -7,7 +7,7 @@ gts = {v: json.load(open(DATA / "label_bundles" / LABELS[v], encoding="utf-8"))[
 L = "failure_to_yield"
 ppl = {v: FailureToYield(data[v][1]).pedestrians(data[v][0]) for v in LABELS}
 f1 = lambda pred, vids: score({v: pred[v] for v in vids}, {v: gts[v] for v in vids}, L)["per_class"].get(L, {"f1_mean": 0})["f1_mean"]
-grid = dict(MODE=["pet"], STEP=[0, 10], EXPAND=[0.0, 0.15], PET=[1.0, 2.0, 3.0], PED_MOVING=[0.0, 0.3], MOVING=[0.4, 1.0], ON_FRAC=[0.15, 0.4])
+grid = dict(STEP=[0, 10], PET=[1.5, 2.0, 3.0], PED_MOVING=[0.2, 0.3], PED_MAX=[1.5, 2.5, 99], PED_REL_H=[0.0, 0.5], MOVING=[0.4, 1.0], SKIP=[(), ("crosswalk_3",)])
 res = []
 for c in itertools.product(*grid.values()):
     kw = dict(zip(grid, c))

@@ -14,17 +14,7 @@
      "stopped_vehicle"
     ],
     [
-     13.814,
-     14.715,
-     "failure_to_yield"
-    ],
-    [
-     16.316,
-     17.217,
-     "failure_to_yield"
-    ],
-    [
-     18.719,
+     13.514,
      19.72,
      "failure_to_yield"
     ],
@@ -59,14 +49,14 @@
      "red_light"
     ],
     [
+     93.494,
+     97.597,
+     "failure_to_yield"
+    ],
+    [
      93.694,
      102.802,
      "jaywalking"
-    ],
-    [
-     93.794,
-     97.597,
-     "failure_to_yield"
     ],
     [
      106.908,
@@ -84,13 +74,13 @@
      "congestion"
     ],
     [
-     156.156,
+     155.856,
      157.657,
      "failure_to_yield"
     ],
     [
-     160.16,
-     160.961,
+     159.86,
+     162.362,
      "failure_to_yield"
     ],
     [
@@ -99,12 +89,7 @@
      "jaywalking"
     ],
     [
-     161.561,
-     162.362,
-     "failure_to_yield"
-    ],
-    [
-     164.765,
+     164.465,
      165.465,
      "failure_to_yield"
     ],
@@ -119,12 +104,12 @@
      "solid_line_crossing"
     ],
     [
-     216.917,
+     216.617,
      217.417,
      "failure_to_yield"
     ],
     [
-     220.52,
+     220.22,
      221.321,
      "failure_to_yield"
     ],
@@ -164,7 +149,7 @@
      "jaywalking"
     ],
     [
-     305.205,
+     304.905,
      305.705,
      "failure_to_yield"
     ]
@@ -41045,12 +41030,7 @@
      "congestion"
     ],
     [
-     156.957,
-     158.458,
-     "failure_to_yield"
-    ],
-    [
-     159.059,
+     156.657,
      160.36,
      "failure_to_yield"
     ],
@@ -41060,7 +41040,7 @@
      "illegal_turn"
     ],
     [
-     180.881,
+     180.581,
      182.582,
      "failure_to_yield"
     ],
@@ -41105,7 +41085,7 @@
      "solid_line_crossing"
     ],
     [
-     289.89,
+     289.59,
      290.791,
      "failure_to_yield"
     ],
@@ -41115,32 +41095,12 @@
      "jaywalking"
     ],
     [
-     298.498,
+     298.198,
      298.999,
      "failure_to_yield"
     ],
     [
-     305.805,
-     306.907,
-     "failure_to_yield"
-    ],
-    [
-     307.707,
-     309.81,
-     "failure_to_yield"
-    ],
-    [
-     311.011,
-     312.512,
-     "failure_to_yield"
-    ],
-    [
-     313.713,
-     315.015,
-     "failure_to_yield"
-    ],
-    [
-     315.916,
+     305.505,
      317.017,
      "failure_to_yield"
     ]
@@ -79266,12 +79226,12 @@
      "jaywalking"
     ],
     [
-     12.312,
+     12.012,
      12.813,
      "failure_to_yield"
     ],
     [
-     23.223,
+     22.923,
      24.424,
      "failure_to_yield"
     ],
@@ -79336,22 +79296,27 @@
      "solid_line_crossing"
     ],
     [
+     162.763,
+     163.263,
+     "failure_to_yield"
+    ],
+    [
      165.966,
      197.496,
      "jaywalking"
     ],
     [
-     171.772,
+     171.472,
      172.673,
      "failure_to_yield"
     ],
     [
-     182.683,
+     182.383,
      186.787,
      "failure_to_yield"
     ],
     [
-     202.402,
+     202.102,
      202.903,
      "failure_to_yield"
     ],
@@ -79391,7 +79356,7 @@
      "jaywalking"
     ],
     [
-     267.968,
+     267.668,
      268.969,
      "failure_to_yield"
     ],
@@ -117522,8 +117487,8 @@
      "stopped_vehicle"
     ],
     [
-     1.502,
-     17.017,
+     1.202,
+     24.725,
      "failure_to_yield"
     ],
     [
@@ -117537,22 +117502,7 @@
      "solid_line_crossing"
     ],
     [
-     19.019,
-     20.32,
-     "failure_to_yield"
-    ],
-    [
-     20.921,
-     21.822,
-     "failure_to_yield"
-    ],
-    [
-     23.624,
-     24.725,
-     "failure_to_yield"
-    ],
-    [
-     27.427,
+     27.127,
      27.928,
      "failure_to_yield"
     ],
@@ -117562,12 +117512,7 @@
      "jaywalking"
     ],
     [
-     37.137,
-     37.838,
-     "failure_to_yield"
-    ],
-    [
-     40.04,
+     36.837,
      41.341,
      "failure_to_yield"
     ],
@@ -117597,7 +117542,7 @@
      "stop_line"
     ],
     [
-     80.881,
+     80.581,
      83.984,
      "failure_to_yield"
     ],
@@ -117612,12 +117557,7 @@
      "congestion"
     ],
     [
-     98.599,
-     100.4,
-     "failure_to_yield"
-    ],
-    [
-     101.401,
+     98.299,
      102.202,
      "failure_to_yield"
     ],
@@ -117627,12 +117567,7 @@
      "jaywalking"
     ],
     [
-     108.809,
-     110.51,
-     "failure_to_yield"
-    ],
-    [
-     111.411,
+     108.509,
      113.714,
      "failure_to_yield"
     ],

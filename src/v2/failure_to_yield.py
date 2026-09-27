@@ -37,8 +37,9 @@ DEFAULTS = dict(
     PED_MAX=1.5,     # box heights per second: faster is not walking (riders whose vehicle box was missed)
     PED_REL_H=0.5,   # pedestrian box height / vehicle box height below this = partial box (0 = off)
     SKIP=("crosswalk_3",),  # never labelled there in 12.6 min; every leave-one-video-out fold skips it (review)
-    GAP=0.5,         # s, merge events closer than this
+    GAP=2.0,         # s, merge events closer than this
     MIN_LEN=0.3,     # s
+    PRE=0.3,         # s the event starts earlier: the front reaches the zebra before the box's bottom band does
 )
 
 
@@ -118,7 +119,7 @@ class FailureToYield:
                 counts = {k: hits.count(k) for k in set(hits)}
                 ped_ok = [k for k, c in counts.items() if len(ppl[ppl.track_id == k]) >= p["PED_MIN"]]
                 if ped_ok:
-                    segs.append((t.t_sec.min(), t.t_sec.max()))
+                    segs.append((max(0.0, t.t_sec.min() - p["PRE"]), t.t_sec.max()))
                     why.append((t.t_sec.min(), t.t_sec.max(), name, tid, ped_ok))
         out = union(segs, gap=p["GAP"], min_len=p["MIN_LEN"])
         res = [(a, b, "; ".join(f"{n} veh #{v} ped {sorted(pp)[:3]}" for s, e, n, v, pp in why if s < b and e > a)[:80])
