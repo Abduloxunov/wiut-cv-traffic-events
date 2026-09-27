@@ -4,7 +4,7 @@ const MEDIA = location.hostname.endsWith(".hf.space")
   ? "https://huggingface.co/spaces/abduloxunov/wiut-traffic-events/resolve/main/demo/site/" : "";
 // Interactive charts for the website: EDA counts, light timeline, event timeline (click = seek), risk curve.
 const VIDEOS = ["C3897", "C3902", "C3905", "C3896"];
-const LABELLED = { C3897: "daylight", C3902: "dusk", C3905: "dusk, jam at the end", C3896: "daylight (not labelled)" };
+const LABELLED = { C3897: "daylight", C3902: "dusk", C3905: "dusk, jam at the end", C3896: "daylight" };
 const EV_COLORS = {
   jaywalking: "#22c55e", stopped_vehicle: "#eab308", failure_to_yield: "#14b8a6", congestion: "#3b82f6",
   stop_line: "#fb7185", solid_line_crossing: "#f59e0b", illegal_turn: "#6366f1", near_miss: "#f97316",
@@ -154,7 +154,7 @@ function drawTimeline(d, gt, player, target = "#timeline") {
   player.ontimeupdate = () => { head.setAttribute("x1", X(player.currentTime)); head.setAttribute("x2", X(player.currentTime)); };
   const legend = document.createElement("div"); legend.className = "legend";
   legend.innerHTML = gt ? "<span>filled bars = our system · outlined bars = our labels · click any bar to jump there</span>"
-                        : "<span>click any bar to jump there (this video is not labelled)</span>";
+                        : "<span>click any bar to jump there</span>";
   box.appendChild(legend);
 }
 

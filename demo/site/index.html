@@ -81,7 +81,7 @@
       <tr class="muted"><td>not emitted</td><td>near_miss, accident, illegal_u_turn, road_obstacle, fire_smoke — no reliable detector on the samples; a predicted class that is absent from the test set would add a zero to the average.</td><td>—</td></tr>
     </tbody>
   </table></div>
-  <p class="note">F1 = mean over tIoU 0.3/0.5/0.7 with the official <code>evaluate.py</code>, on our labels of three
+  <p class="note">F1 = mean over tIoU 0.3/0.5/0.7 with the official <code>evaluate.py</code>, on our labels of the
     sample videos; settings chosen on the same labels, so these are optimistic. Leave-one-video-out: jaywalking 0.44,
     failure_to_yield 0.22.</p>
 </section>
@@ -119,8 +119,8 @@
 <section id="results">
   <h2>Results on the sample videos</h2>
   <p>Our annotated playback of every sample video (boxes by class, active events, timeline strip), the event
-    timeline — <b>click an event to jump the video to it</b> — and the Part B risk curve. On the three videos we
-    labelled, our labels are drawn as outlines under the predictions.</p>
+    timeline — <b>click an event to jump the video to it</b> — and the Part B risk curve. Where we have
+    labels, they are drawn as outlines under the predictions.</p>
   <div class="picker" id="resPick"></div>
   <video id="player" controls preload="metadata" playsinline></video>
   <div id="timeline" class="chart"></div>
@@ -144,7 +144,7 @@
 
 <section id="analysis">
   <h2>Error analysis on our dev labels</h2>
-  <p>We labelled three sample videos ourselves (58+ events, 8 classes) with our own labelling tool and scored every
+  <p>We labelled the sample videos ourselves (58+ events, 8 classes) with our own labelling tool and scored every
     change with the official metric. What moved the score:</p>
   <div class="tablewrap"><table>
     <thead><tr><th>Class</th><th>Main error found</th><th>Fix</th><th>Effect</th></tr></thead>
@@ -247,7 +247,7 @@
   <h2>Report</h2>
   <div class="grid3">
     <div><h3>What we built</h3><p>A detector + tracker + aligned scene map + one transparent rule module per class,
-      a labelling tool with per-video bundles for the team, dev labels for three sample videos, an evaluation harness
+      a labelling tool with per-video bundles for the team, dev labels for the sample videos, an evaluation harness
       per class, and a causal pair-risk estimator for Part B. The event layer runs in about 0.04× the video length.</p></div>
     <div><h3>What worked</h3><ul>
       <li>Labelling our own dev set early and scoring every change with the official metric.</li>
@@ -263,7 +263,7 @@
   <h3>What we would do next</h3>
   <ul>
     <li>Validate Part B and an accident verifier on public CCTV crash clips (ACCIDENT benchmark, TAD).</li>
-    <li>Label more video (the fourth sample) and redraw the solid lines; fine-tune the detector on our frames.</li>
+    <li>Label more video and redraw the solid lines; fine-tune the detector on our frames.</li>
     <li>A near-miss signal from sudden deceleration or heading change of a turning vehicle next to another.</li>
   </ul>
 </section>
@@ -283,17 +283,17 @@
     </article>
     <article class="member">
       <img src="team/muhammadjon.jpg" alt="Muhammadjon Xalimov" loading="lazy">
-      <p class="eyebrow">Member · Data labelling</p>
+      <p class="eyebrow">Member · Website and research</p>
       <h3>Muhammadjon Xalimov</h3>
-      <p>Labelling of the sample videos (dev set).</p>
+      <p>Website design, research on traffic-violation systems and existing solutions, labelling of the sample videos.</p>
       <p class="links"><a href="https://github.com/muxammadjonx07-dev" target="_blank" rel="noopener">GitHub</a>
         <a href="https://www.linkedin.com/in/%D0%BC%D1%83%D1%85%D0%B0%D0%BC%D0%BC%D0%B0%D0%B4%D0%B6%D0%BE%D0%BD-%D1%85%D0%B0%D0%BB%D0%B8%D0%BC%D0%BE%D0%B2-b85340334" target="_blank" rel="noopener">LinkedIn</a></p>
     </article>
     <article class="member">
       <img src="team/bexruz.jpg" alt="Bexruz Xasanov" loading="lazy">
-      <p class="eyebrow">Member · Data labelling</p>
+      <p class="eyebrow">Member · Datasets and research</p>
       <h3>Bexruz Xasanov</h3>
-      <p>Labelling of the sample videos (dev set).</p>
+      <p>Finding public datasets and models (accident and traffic benchmarks), research, labelling of the sample videos.</p>
       <p class="links"><a href="https://github.com/bekhruz-khasanov" target="_blank" rel="noopener">GitHub</a></p>
     </article>
   </div>

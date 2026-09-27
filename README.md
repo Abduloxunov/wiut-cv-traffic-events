@@ -44,7 +44,7 @@ our own labels of the sample videos (below).
 | wrong_way | motion over 2 s against the lane arrows on the straight carriageways, sustained >= 2 s and >= 3 lengths | no labelled example; silent on the 4 samples, 20/20 on real tracks played backwards |
 | near_miss, accident, illegal_u_turn, road_obstacle, fire_smoke | not emitted: no reliable detector on the samples (an absent class that is predicted adds a zero to the macro average) | — |
 
-\*Official `evaluate.py`, mean F1 over tIoU 0.3/0.5/0.7, on our labels of three sample videos (58+ events), with
+\*Official `evaluate.py`, mean F1 over tIoU 0.3/0.5/0.7, on our labels of the sample videos (58+ events), with
 settings chosen on the same labels — optimistic; leave-one-video-out numbers are lower (e.g. jaywalking 0.44,
 failure_to_yield 0.22). Overall Score A on these labels: first rule set 0.138 → event layer v2 0.497.
 Work log with every experiment: `docs/worklog.md`; labelling conventions and team decisions: `docs/labeling.md`,
@@ -100,7 +100,7 @@ videos are used only to choose rule thresholds; the footage itself stays within 
 | Member | Role | Links |
 |---|---|---|
 | Davlatyor Abduloxunov (lead) | Scene map of the junction, dev-set labelling and review, research direction, pipeline and design decisions, website | [GitHub](https://github.com/Abduloxunov) · [LinkedIn](https://www.linkedin.com/in/abduloxunovdavlatyor) · [Portfolio](https://abduloxunov.github.io/) |
-| Muhammadjon Xalimov | Labelling of the sample videos (dev set) | [GitHub](https://github.com/muxammadjonx07-dev) · [LinkedIn](https://www.linkedin.com/in/%D0%BC%D1%83%D1%85%D0%B0%D0%BC%D0%BC%D0%B0%D0%B4%D0%B6%D0%BE%D0%BD-%D1%85%D0%B0%D0%BB%D0%B8%D0%BC%D0%BE%D0%B2-b85340334) |
-| Bexruz Xasanov | Labelling of the sample videos (dev set) | [GitHub](https://github.com/bekhruz-khasanov) |
+| Muhammadjon Xalimov | Website design, research on traffic-violation systems and existing solutions, labelling | [GitHub](https://github.com/muxammadjonx07-dev) · [LinkedIn](https://www.linkedin.com/in/%D0%BC%D1%83%D1%85%D0%B0%D0%BC%D0%BC%D0%B0%D0%B4%D0%B6%D0%BE%D0%BD-%D1%85%D0%B0%D0%BB%D0%B8%D0%BC%D0%BE%D0%B2-b85340334) |
+| Bexruz Xasanov | Public datasets and models (accident and traffic benchmarks), research, labelling | [GitHub](https://github.com/bekhruz-khasanov) |
 
 Developed with AI coding assistance (Claude); design decisions and labels by the team.
