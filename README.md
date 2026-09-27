@@ -61,7 +61,13 @@ videos are used only to choose rule thresholds; the footage itself stays within 
 - Non-deterministic: GPU inference order and floating point can change detections slightly, and both parts stop
   processing frames when their time budget is used up (`PART_A_BUDGET`, `RISK_BUDGET`), so a much slower machine gives
   fewer frames.
-- `predictions_samples.json`: output of the command above on the sample videos (generated on a GPU machine).
+- `predictions_samples.json`: our output on the four sample videos, in the harness format (validated with
+  `evaluate.py --validate-only`). No GPU was available before the deadline, so it was produced on CPU by
+  `tools/make_predictions_samples.py` with solution.py's exact steps: Part A = event layer on YOLO26m @1280 +
+  ByteTrack tracks of every 3rd frame (the same settings as solution.py, saved by `src/detect_track.py`), lights read
+  on every 3rd frame, zones aligned on the first frame; Part B = `solution.RiskEstimator` fed every frame like
+  `run_submission.py` (time budget lifted on CPU). On a T4 the command above should reproduce it up to GPU
+  floating-point differences.
 
 ## Layout
 | Path | What |

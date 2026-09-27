@@ -106,7 +106,7 @@ def run(video_path, out_dir, progress=lambda frac, msg: None):
         r = track_frame(m, frame, idx, t, imgsz=IMGSZ)
         rows += [[f, tt, tid, c, cf, x1 * sx, y1 * sy, x2 * sx, y2 * sy] for f, tt, tid, c, cf, x1, y1, x2, y2 in r]
         light_rows.append({"t_sec": round(t, 3), **signals.states(frame, rects_small)})
-        small = cv2.resize(frame, (OUT_WIDTH, int(dh * OUT_WIDTH / dw)))
+        small = cv2.resize(frame, (OUT_WIDTH, int(dh * OUT_WIDTH / dw) // 2 * 2))  # H.264 needs even sizes
         kept.append((idx, t, small, r))
         if len(kept) % 10 == 0:
             progress(0.05 + 0.75 * min(1.0, k / max(n_proc, 1)), f"Detecting and tracking: {t:.0f} / {n / fps:.0f} s")
@@ -146,7 +146,7 @@ ZONE_COLORS = {"crosswalk": (255, 255, 255), "island": (120, 120, 255), "sidewal
 def _zones_preview(frame, scene, sx, sy, path):
     """The uploaded video's first frame with our zones as aligned to it (proof that the scene map fits)."""
     h, w = frame.shape[:2]
-    img = cv2.resize(frame, (OUT_WIDTH, int(h * OUT_WIDTH / w)))
+    img = cv2.resize(frame, (OUT_WIDTH, int(h * OUT_WIDTH / w) // 2 * 2))
     k = OUT_WIDTH / w
     over = img.copy()
     for z in scene.shapes:

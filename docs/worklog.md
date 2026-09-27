@@ -421,3 +421,8 @@ design/extras 10 %), one-page report. AI Lab proposal already allows publishing 
   predictions_samples.json on CPU with solution.py's exact steps: Part A = event layer on the saved YOLO26m@1280
   every-3rd-frame tracks (same settings as solution.py), lights read every 3rd frame, first-frame alignment;
   Part B = solution.RiskEstimator fed every frame like run_submission (budget lifted for CPU). Running (~1–2 h).
+- **predictions_samples.json done** (CPU, `tools/make_predictions_samples.py`): 4 videos, 120 events, risk for every
+  frame (max 0.28–0.43), `evaluate.py --validate-only` VALID, committed; README explains how it was produced.
+- Demo test clips (`../demo_test_clips/`, from the samples, team only): 30 s day 1280, 60 s dusk 480p, 45 s jam 1080p,
+  2 min day 1280. The 480p clip found a bug: odd output height (629 px) broke the H.264 writer → heights rounded to
+  even; zones still aligned at 480p; 60 s clip in 37.5 s.
