@@ -23,6 +23,7 @@ VEHICLES = {"car", "bus", "truck", "motorcycle"}
 DEFAULTS = dict(
     MODE="junction",       # "junction" (v1 rule + gap bridging) or "direction" (per-approach test above)
     GAP_JUNCTION=10.0,
+    PAD_END=1.0,           # s the queue is still there when the last frame flagged it (boundary search, LOVO 0.36 -> 0.40)
     AREAS=("approach",),   # zone types / names used as areas; add "intersection" for gridlock in the junction
     N_MIN=5,
     STILL=0.15,            # box heights per second
@@ -65,7 +66,7 @@ class Congestion:
         if p["MODE"] == "junction":
             from rules import congestion as v1_congestion
             segs = [(s, e) for s, e, _ in v1_congestion(df, self.scene)]
-            return [(a, b, "") for a, b in union(segs, gap=p["GAP_JUNCTION"])]
+            return [(a, b + p["PAD_END"], "") for a, b in union(segs, gap=p["GAP_JUNCTION"])]
         flags = self.frame_flags(df) if flags is None else flags
         segs = []
         for name, (times, f) in flags.items():

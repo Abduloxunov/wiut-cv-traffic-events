@@ -475,3 +475,9 @@ LOVO pooled 0.461 (before 0.44–0.46) — a small boundary gain, not overfittin
 - Result: FTY 0.26 -> 0.33 (all 3), LOVO 0.22 -> 0.29; combined Score A 0.497 -> 0.506. New defaults PRE 0.3, GAP 2.0.
 - predictions_samples.json FTY events recomputed from the saved tracks (FTY does not use the lights): 111 events, VALID.
 - Next actions: the user decides whether to merge into main / move the tag v1.0-elimination / update the Space.
+
+## 2026-09-27 23:36 — boundary search over every class (branch `improve-fty`)
+- `experiments/combined/boundary_search.py`: run v2 once, then shift start/end (DS, DE), merge gaps, minimum length; LOVO per class.
+- Only congestion gains under LOVO: end +1 s (folds chose +2 / +0.5 / +1) -> 0.356 -> 0.489 on all 3, LOVO 0.40. Adopted as PAD_END=1.0.
+- Not adopted (full-set gain only, LOVO unchanged or worse = overfitting): stop_line end -2 s (0.86 -> 1.00, LOVO 0.86), stopped_vehicle start -2 s (0.83 -> 0.92, LOVO 0.83), jaywalking/solid_line (LOVO worse).
+- Combined Score A 0.506 -> 0.522. predictions_samples.json congestion events recomputed (111 events, VALID). README scores updated.
