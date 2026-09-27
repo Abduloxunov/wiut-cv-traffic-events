@@ -1,3 +1,7 @@
+// On the Hugging Face Space, stream the big videos from the Hub's CDN (about 10x faster than the Space container);
+// locally, use the files next to the page.
+const MEDIA = location.hostname.endsWith(".hf.space")
+  ? "https://huggingface.co/spaces/abduloxunov/wiut-traffic-events/resolve/main/demo/site/" : "";
 // Interactive charts for the website: EDA counts, light timeline, event timeline (click = seek), risk curve.
 const VIDEOS = ["C3897", "C3902", "C3905", "C3896"];
 const LABELLED = { C3897: "daylight", C3902: "dusk", C3905: "dusk, jam at the end", C3896: "daylight (not labelled)" };
@@ -107,7 +111,7 @@ fetch("data/dev_labels.json").then((r) => r.json()).then((l) => { labels = l; pi
 
 function showResult(v) {
   const player = $("#player");
-  player.src = `videos/${v}.mp4`;
+  player.src = `${MEDIA}videos/${v}.mp4`;
   fetch(`data/${v}.json`).then((r) => r.json()).then((d) => {
     drawTimeline(d, labels[v] || null, player);
     const rt = d.risk.map((r) => r[0]), rv = d.risk.map((r) => r[1]);
@@ -293,3 +297,6 @@ Promise.all(VIDEOS.map((v) => fetch(`data/${v}.json`).then((r) => r.json()))).th
     all[i].events.filter((e) => e[0] >= 60 * m && e[0] < 60 * (m + 1)).length)]));
   barChart("#dashMinute", Array.from({ length: mins }, (_, m) => `${m}:00`), perMin, VCOL);
 });
+
+// hero loop from the CDN too
+{ const h = document.querySelector(".hero-video"); if (h && MEDIA) { h.src = `${MEDIA}videos/hero.mp4`; h.play().catch(() => {}); } }
