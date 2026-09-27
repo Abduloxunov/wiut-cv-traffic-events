@@ -461,3 +461,7 @@ motorcycles — no real wrong-way driver in the samples. Rule: only on the strai
 junction), motion over 2 s against the nearest lane arrow (cos < -0.7), sustained >= 2 s and >= 3 box heights backwards.
 Silent on all 4 videos (also with 1 s / 2 lengths); recall check: 20 real C3897 tracks played backwards → 20/20
 detected. Emitted.
+**accident v2 — not emitted** (`src/v2/accident.py`): contact (ground points closer than 0.35 x size sum) after
+closing fast from apart, then both at rest within 1.5 s for >= 3 s, still fast right at contact (no gradual braking),
+no person-person pairs. On the 4 samples (no accidents) it still fires 3-17 times per video even at the strictest
+setting — mostly tracker ID switches that look like sudden stops. Stopped for time (22:45); stays off.
