@@ -89,3 +89,12 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 32px
 .hero-video { width: 100%; border-radius: 14px; margin-top: 8px; }
 .pipeline img { border: 0; border-radius: 8px; }
 .avatar { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; display: block; margin-bottom: 12px; border: 1px solid var(--line); }
+
+.members { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+.member img { width: 100%; height: auto; border-radius: 16px; display: block; background: #e2e8f0; }
+.member .eyebrow { margin: 18px 0 6px; font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.member h3 { margin: 0 0 8px; font-size: 22px; }
+.member p { margin: 0; color: #475569; font-size: 15px; }
+.member .links { margin-top: 12px; display: flex; gap: 14px; font-size: 14px; font-weight: 600; }
+.member .links a { text-decoration: none; }
+@media (max-width: 800px) { .members { grid-template-columns: 1fr; gap: 40px; } }

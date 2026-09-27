@@ -430,3 +430,4 @@ design/extras 10 %), one-page report. AI Lab proposal already allows publishing 
   Muhammadjon Xalimov, Behruz Xasanov. Website Team section with photos (Behruz: initials placeholder until his photo
   arrives), GitHub / LinkedIn / portfolio links; README team table updated (student IDs removed from the public README).
   Still needed: each member's actual contributions and previous projects.
+- Team section redesigned (reference layout: large portrait, spaced uppercase role line, bold name, short text), full uncropped 3:4 photos; Bexruz (with x) Xasanov's photo added and spelling fixed.
