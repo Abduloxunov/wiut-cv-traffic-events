@@ -431,3 +431,8 @@ design/extras 10 %), one-page report. AI Lab proposal already allows publishing 
   arrives), GitHub / LinkedIn / portfolio links; README team table updated (student IDs removed from the public README).
   Still needed: each member's actual contributions and previous projects.
 - Team section redesigned (reference layout: large portrait, spaced uppercase role line, bold name, short text), full uncropped 3:4 photos; Bexruz (with x) Xasanov's photo added and spelling fixed.
+- **Deployed (private) on Hugging Face** after the lead subscribed to PRO: Docker Space
+  `abduloxunov/wiut-traffic-events` (https://huggingface.co/spaces/abduloxunov/wiut-traffic-events,
+  app https://abduloxunov-wiut-traffic-events.hf.space), cpu-basic (2 vCPU). Built and RUNNING; all pages, data,
+  videos, photos served; online demo job with the 30 s test clip → 3 events in 134 s (~4.5x clip length); demo text
+  now states the processing time. Still private — the lead makes it public.
