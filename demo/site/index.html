@@ -26,7 +26,7 @@
     video, and turn trajectories into events: jaywalking, vehicles failing to yield, stopped vehicles, stop-line and
     lane violations, illegal turns, congestion. A causal risk score estimates how likely a crash is in the next 5 s.</p>
   <div class="stats">
-    <div><b>0.49</b><span>Score A on our labels of the samples (first rules: 0.14)</span></div>
+    <div><b>0.50</b><span>Score A on our labels of the samples (first rules: 0.14)</span></div>
     <div><b>9</b><span>event classes emitted</span></div>
     <div><b>4</b><span>sample videos annotated · 19 min</span></div>
     <div><b>~0.04×</b><span>event layer run time vs video length</span></div>
@@ -72,7 +72,7 @@
       <tr><td>illegal_turn</td><td>Origin → destination + lane of origin: a left turn to the bottom-left road from any lane but the leftmost (all normal left turns came from lane 0).</td><td>0.00 → 1.00</td></tr>
       <tr><td>stop_line</td><td>The vehicle arrives past the stop line while its signal is red and stops there; the event ends when the light turns green.</td><td>0.67 → 0.86</td></tr>
       <tr><td>stopped_vehicle</td><td>Near-still vehicle boxes linked by overlap over time (not by tracker IDs, which switch); a signal queue stands and drives off together, a parked car does not.</td><td>0.00 → 0.83</td></tr>
-      <tr><td>jaywalking</td><td>"Someone is on the carriageway outside a crossing" for the whole scene, margin scaled by the person's height, riders excluded, confirmed over 1 s, gaps up to 4 s bridged.</td><td>0.32 → 0.47</td></tr>
+      <tr><td>jaywalking</td><td>"Someone is on the carriageway outside a crossing" for the whole scene, margin scaled by the person's height, riders excluded, confirmed over 1 s, gaps up to 4 s bridged.</td><td>0.32 → 0.52</td></tr>
       <tr><td>congestion</td><td>≥ 4 still vehicles in the junction for ≥ 5 s, bridged over 10 s gaps.</td><td>0.29 → 0.36</td></tr>
       <tr><td>failure_to_yield</td><td>Post-encroachment time: a moving vehicle's footprint covers a spot on the crossing that a walking pedestrian occupied within 2 s.</td><td>0.10 → 0.26</td></tr>
       <tr><td>red_light</td><td>The vehicle's front crosses the stop line while its signal has been red for at least 4 s (past any amber, which glows orange-red at dusk) and stays red for 2 s more (not an early start); it drives on through the junction.</td><td>no labelled example · fires only on the one real runner in the 4 samples</td></tr>

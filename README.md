@@ -36,7 +36,7 @@ our own labels of the sample videos (below).
 | illegal_turn | origin–destination + lane of origin: left turn to the bottom-left road from any lane but the leftmost | 1.00 |
 | stop_line | vehicle arrives past the stop line while its (readable) signal is red and stops there; ends at green | 0.86 |
 | stopped_vehicle | static groups of near-still vehicle boxes linked by overlap (not by track IDs); a queue = stands and drives off together with its neighbours | 0.83 |
-| jaywalking | scene-level "someone on the carriageway outside a crossing" (perspective-scaled margin, riders excluded), k-of-n confirmation, gap bridging | 0.47 |
+| jaywalking | scene-level "someone on the carriageway outside a crossing" (perspective-scaled margin, riders excluded), k-of-n confirmation, gap bridging, 1 s end padding | 0.52 |
 | congestion | ≥ 4 still vehicles in the junction ≥ 5 s, bridged over 10 s gaps | 0.36 |
 | failure_to_yield | post-encroachment time: a moving vehicle's footprint covers a spot a walking pedestrian occupied on the crossing within 2 s | 0.26 |
 | solid_line_crossing | vehicle footprint centre crosses (or straddles) the solid stretch of a lane divider | 0.14 |
@@ -46,7 +46,7 @@ our own labels of the sample videos (below).
 
 \*Official `evaluate.py`, mean F1 over tIoU 0.3/0.5/0.7, on our labels of three sample videos (58+ events), with
 settings chosen on the same labels — optimistic; leave-one-video-out numbers are lower (e.g. jaywalking 0.44,
-failure_to_yield 0.22). Overall Score A on these labels: first rule set 0.138 → event layer v2 0.490.
+failure_to_yield 0.22). Overall Score A on these labels: first rule set 0.138 → event layer v2 0.497.
 Work log with every experiment: `docs/worklog.md`; labelling conventions and team decisions: `docs/labeling.md`,
 `labels/notes.md`.
 
