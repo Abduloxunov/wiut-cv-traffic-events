@@ -28,7 +28,7 @@ import process
 
 HERE = Path(__file__).resolve().parent
 SITE = HERE / "site"
-MAX_MB = 800
+MAX_MB = 10_000               # disk safety only: any size is accepted, the pipeline scales it down
 JOB_TTL = 3600
 WORK = Path(tempfile.gettempdir()) / "traffic_demo_jobs"
 

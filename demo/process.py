@@ -1,6 +1,7 @@
 """Demo pipeline for the website: the same stages as solution.py, sized for a CPU server.
 
-  video -> first frame -> zones aligned (SIFT homography) -> YOLO26s @960 + ByteTrack every STRIDE-th frame
+  video -> first frame -> zones aligned (SIFT homography) -> FFmpeg decodes TARGET_HZ frames per second scaled to
+  DECODE_W wide (any input size; multi-threaded, so a 4K upload costs little) -> YOLO26s/n @960 + ByteTrack
   (boxes mapped to the 3840x2160 frame the zones and rules are calibrated in) -> traffic-light states ->
   event layer v2 -> causal risk replay -> annotated playback + events + risk curve
 
@@ -33,6 +34,7 @@ IMGSZ = 960
 WEIGHTS = {"s": ROOT / "weights" / "yolo26s.pt", "n": ROOT / "weights" / "yolo26n.pt"}
 SMALL_MAX_FRAMES = 250        # ~50 s at 5 Hz; longer clips use the nano detector (about 3x faster on CPU)
 OUT_WIDTH = 960
+DECODE_W = 1920               # decoded width: enough for the detector at 960 and for the small signal heads
 
 EVENT_COLORS = {  # BGR, same palette as tools/render_results.py
     "jaywalking": (94, 197, 34), "stopped_vehicle": (8, 179, 234), "failure_to_yield": (166, 184, 20),
@@ -67,8 +69,10 @@ def run(video_path, out_dir, progress=lambda frac, msg: None):
     n = min(n_total, int(MAX_SEC * fps)) if n_total else int(MAX_SEC * fps)
     if duration_full > MAX_SEC:
         notes.append(f"Video is {duration_full:.0f} s long; the first {MAX_SEC:.0f} s were processed.")
-    stride = max(1, int(round(fps / TARGET_HZ)))
-    sx, sy = CANON[0] / W, CANON[1] / H
+    hz = min(TARGET_HZ, fps)
+    dw = min(DECODE_W, W) // 2 * 2
+    dh = int(round(H * dw / W / 2)) * 2
+    sx, sy = CANON[0] / dw, CANON[1] / dh
 
     ok, first = cap.read()
     if not ok:
@@ -78,34 +82,34 @@ def run(video_path, out_dir, progress=lambda frac, msg: None):
     scene = Scene.from_image(canon_first)
     if getattr(scene, "aligned", True) is False:
         notes.append("Could not match this view to our camera; zones are only scaled, so events may be wrong.")
-    _zones_preview(first, scene, sx, sy, out_dir / "zones.jpg")
+    _zones_preview(first, scene, CANON[0] / W, CANON[1] / H, out_dir / "zones.jpg")
     rects = signals.boxes(scene)
     rects_small = {k: (int(x1 / sx), int(y1 / sy), int(np.ceil(x2 / sx)), int(np.ceil(y2 / sy)))
                    for k, (x1, y1, x2, y2) in rects.items()}
 
-    size = "s" if n / stride <= SMALL_MAX_FRAMES else "n"
-    notes.append(f"Detector: YOLO26{size} at {IMGSZ} px, {fps / stride:.1f} processed frames per second.")
+    cap.release()
+    n_proc = int((n / fps) * hz)
+    size = "s" if n_proc <= SMALL_MAX_FRAMES else "n"
+    notes.append(f"Input {W}x{H} at {fps:.2f} fps, decoded at {dw}x{dh}, {hz:.0f} frames per second; "
+                 f"detector YOLO26{size} at {IMGSZ} px.")
     m = model(size)
     m.predictor = None
-    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+    import imageio_ffmpeg
+    reader = imageio_ffmpeg.read_frames(str(video_path), pix_fmt="bgr24", input_params=["-t", f"{n / fps:.3f}"],
+                                        output_params=["-vf", f"fps={hz},scale={dw}:{dh}"])
+    reader.__next__()  # metadata
     rows, light_rows, kept = [], [], []
-    for idx in range(n):
-        if idx % stride:
-            if not cap.grab():
-                break
-            continue
-        ok, frame = cap.read()
-        if not ok:
-            break
-        t = idx / fps
+    for k, raw in enumerate(reader):
+        frame = np.frombuffer(raw, np.uint8).reshape(dh, dw, 3).copy()
+        t = k / hz
+        idx = int(round(t * fps))
         r = track_frame(m, frame, idx, t, imgsz=IMGSZ)
         rows += [[f, tt, tid, c, cf, x1 * sx, y1 * sy, x2 * sx, y2 * sy] for f, tt, tid, c, cf, x1, y1, x2, y2 in r]
         light_rows.append({"t_sec": round(t, 3), **signals.states(frame, rects_small)})
-        small = cv2.resize(frame, (OUT_WIDTH, int(H * OUT_WIDTH / W)))
+        small = cv2.resize(frame, (OUT_WIDTH, int(dh * OUT_WIDTH / dw)))
         kept.append((idx, t, small, r))
         if len(kept) % 10 == 0:
-            progress(0.05 + 0.75 * idx / max(n, 1), f"Detecting and tracking: {t:.0f} / {n / fps:.0f} s")
-    cap.release()
+            progress(0.05 + 0.75 * min(1.0, k / max(n_proc, 1)), f"Detecting and tracking: {t:.0f} / {n / fps:.0f} s")
     duration = n / fps
 
     progress(0.82, "Finding events")
@@ -122,7 +126,7 @@ def run(video_path, out_dir, progress=lambda frac, msg: None):
 
     progress(0.9, "Rendering the annotated playback")
     video_out = out_dir / "annotated.mp4"
-    _render(kept, events, risk, duration, fps / stride, W, video_out)
+    _render(kept, events, risk, duration, hz, dw, video_out)
     counts = {}
     for _, _, lab in events:
         counts[lab] = counts.get(lab, 0) + 1

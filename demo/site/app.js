@@ -192,7 +192,6 @@ function setStatus(frac, msg) {
 runBtn.onclick = () => {
   const f = fileIn.files[0];
   if (!f) return;
-  if (f.size > 800e6) { setStatus(0, "File is larger than 800 MB."); return; }
   runBtn.disabled = true; $("#demoOut").hidden = true; started = 0;
   const xhr = new XMLHttpRequest();
   xhr.open("POST", "api/jobs");
