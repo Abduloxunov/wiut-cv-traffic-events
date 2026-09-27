@@ -455,3 +455,9 @@ change or early starters. Rule: crossing from the approach side while red has be
 and stays red ≥ 2 s (not early starters), driving through; ends when it leaves the junction or first comes to rest
 after it. Fires once in all 4 videos (the real runner, 1:18.9–1:24.7), unchanged for settle 1–10 s. Added to the
 pipeline; dev Score A unchanged (0.490, it stays silent on the labelled videos).
+**wrong_way v2** (`src/v2/wrong_way.py`): the old rule's 5 firings in the samples were a car turning off at the far
+corner, a car entering from the bottom-right road onto the far carriageway (correct direction), and weaving
+motorcycles — no real wrong-way driver in the samples. Rule: only on the straight carriageways (approach zones, not the
+junction), motion over 2 s against the nearest lane arrow (cos < -0.7), sustained >= 2 s and >= 3 box heights backwards.
+Silent on all 4 videos (also with 1 s / 2 lengths); recall check: 20 real C3897 tracks played backwards → 20/20
+detected. Emitted.

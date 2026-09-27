@@ -3,8 +3,9 @@
 Classes and why they are (not) emitted -- see docs/worklog.md for the numbers on the dev labels:
   emitted: jaywalking, stopped_vehicle, failure_to_yield, congestion, stop_line (needs the signal timeline),
            solid_line_crossing (weak, but present in every sample video), illegal_turn,
-           red_light (strict: settled red; fires only on the one real runner in the four samples)
-  not emitted: near_miss (no working signal yet), wrong_way (only false positives on the samples),
+           red_light (strict: settled red; fires only on the one real runner in the four samples),
+           wrong_way (strict: sustained, on the straight carriageways; silent on the samples, 20/20 on reversed tracks)
+  not emitted: near_miss (no working signal yet),
            accident, illegal_u_turn, road_obstacle, fire_smoke (never seen in the samples; an absent class that we
            predict adds a zero to the macro average)
 """
@@ -15,13 +16,14 @@ from v2.failure_to_yield import FailureToYield
 from v2.illegal_turn import IllegalTurn
 from v2.jaywalking import Jaywalking
 from v2.red_light import RedLight
+from v2.wrong_way import WrongWay
 from v2.segments import union
 from v2.solid_line import SolidLine
 from v2.stop_line import StopLine
 from v2.stopped_vehicle import StoppedVehicle
 
 EMITTED = ("jaywalking", "stopped_vehicle", "failure_to_yield", "congestion", "stop_line",
-           "solid_line_crossing", "illegal_turn", "red_light")
+           "solid_line_crossing", "illegal_turn", "red_light", "wrong_way")
 
 
 def detect_v2(df, scene, duration, signals=None, classes=EMITTED, fps=29.97, timings=None):
@@ -36,6 +38,7 @@ def detect_v2(df, scene, duration, signals=None, classes=EMITTED, fps=29.97, tim
         "solid_line_crossing": lambda: SolidLine(scene).detect(df),
         "illegal_turn": lambda: IllegalTurn(scene).detect(df),
         "red_light": lambda: RedLight(scene, signals).detect(df) if signals is not None and len(signals) else [],
+        "wrong_way": lambda: WrongWay(scene).detect(df),
     }
     events = []
     for label in classes:
