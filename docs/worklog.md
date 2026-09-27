@@ -442,3 +442,16 @@ design/extras 10 %), one-page report. AI Lab proposal already allows publishing 
   hero loop plays. Found: videos took 20–38 s to start — (1) MP4 index at the end → remuxed with +faststart (renderers
   now write faststart); (2) the Space container serves files at only ~30–50 KB/s to us while the Hub CDN serves the
   same file at ~320 KB/s → the site streams videos from the CDN when hosted on the Space. Now 4–8 s to play.
+
+## Evening: all classes (27 Sep, after 19:00) — team name MDB Vision added everywhere
+Policy for classes without labelled examples: strict rules from the research concepts; a rule may only be emitted if
+it stays silent on normal traffic (it may fire only on verified real events in the 4 samples) — then an absent class
+costs nothing and a present one can only gain.
+**red_light v2** (`src/v2/red_light.py`): all 493 stop_line_1 crossings in the 4 samples listed with the light state
+(467 green, 9 amber, 17 "red"); inspected the candidates with the signal head enlarged (`figures/14_rare_classes/`):
+C3896 1:18.9 is a real runner (red for 12.8 s, pedestrians on their green); C3902 2:35.9 was amber (middle lamp glows
+orange-red at dusk → colour reader said red), C3902 2:34.4 flashing green (all lamps dark), the rest are flicker at the
+change or early starters. Rule: crossing from the approach side while red has been settled ≥ 4 s (past any amber)
+and stays red ≥ 2 s (not early starters), driving through; ends when it leaves the junction or first comes to rest
+after it. Fires once in all 4 videos (the real runner, 1:18.9–1:24.7), unchanged for settle 1–10 s. Added to the
+pipeline; dev Score A unchanged (0.490, it stays silent on the labelled videos).
