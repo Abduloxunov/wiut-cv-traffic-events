@@ -170,7 +170,7 @@ def _render(kept, events, risk, duration, out_fps, W_in, path):
     strip = 90
     s = OUT_WIDTH / W_in
     writer = imageio_ffmpeg.write_frames(str(path), (w, h + strip), fps=out_fps, codec="libx264",
-                                         macro_block_size=1, output_params=["-crf", "28", "-preset", "veryfast"])
+                                         macro_block_size=1, output_params=["-crf", "28", "-preset", "veryfast", "-movflags", "+faststart"])
     writer.send(None)
     labels = sorted({e[2] for e in events})
     rt = np.array([r[0] for r in risk]) if risk else np.zeros(0)

@@ -84,7 +84,7 @@ def render(stem, proxies, runs, out_dir, fps=29.97):
     strip = 110
     writer = imageio_ffmpeg.write_frames(str(out_dir / f"{stem}_annotated.mp4"), (W, H + strip), fps=fps,
                                          codec="libx264", quality=None, bitrate=None,
-                                         output_params=["-crf", "27", "-preset", "veryfast", "-pix_fmt", "yuv420p"])
+                                         output_params=["-crf", "27", "-preset", "veryfast", "-pix_fmt", "yuv420p", "-movflags", "+faststart"])
     writer.send(None)
     risk_t = np.array([r[0] for r in risk]); risk_v = np.array([r[1] for r in risk])
     for i in range(n):
