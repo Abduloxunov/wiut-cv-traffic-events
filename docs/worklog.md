@@ -310,3 +310,21 @@ sighting). Fixes the case found while labelling (crossed on green, then held pas
 **v1 0.67 → v2 0.86** on the dev labels (3 labelled events, all found at every tIoU; false alarms 3 → 1, the last one
 at the very end of C3902). "not red but not green" (amber) as the arrival condition scored 0.75 → kept "red".
 Note: C3897's stop_line label is an accepted old-rule suggestion (its timing is v1's).
+
+**congestion v2** (`src/v2/congestion.py`, `experiments/congestion/`): new per-direction test (vehicles in each drawn
+approach: enough of them, most standing, even the faster ones crawling; + junction as an area) — best 0.30 on all 3,
+**0.19 leave-one-video-out**, not better than the v1 junction rule (0.29 on the updated labels). v1 + v2 gap bridging:
+gap 3–10 s → **0.36**, gap 20 s → 0.52 but that gain is all C3897, whose congestion labels are accepted v1
+suggestions (biased towards v1 timings; C3902/C3905 unchanged). Default = v1 junction rule + 10 s bridging (0.36);
+per-direction mode kept for better labels. C3902's labelled jams are approach_1 spilling onto the crossing and junction.
+
+**solid_line_crossing v2** (`src/v2/solid_line.py`, `experiments/solid_line/`): 9 labels. Box-corner side tests →
+388 raw crossings (a box is wider than the car from this oblique camera), best 0.11, **0.0 leave-one-video-out**.
+Footprint-centre version (side change of the centre, event = crossing −1 s … +0.5 s; straddling ≥ 8 s counts) → best
+0.14 on all 3 with the solid stretch = first 20 % of each drawn line from the stop line, still **0.0 LOVO**. Weak, but
+the class occurs in all 3 samples, so it is emitted (a class present in the test set is scored whether we predict it or
+not; a weak detector can only add). Needs the redrawn solid lines (lead's pending fix) — redo then.
+
+**Emission rule (decided 27 Sep):** emit every class that appears in our sample labels (it is almost surely in the test
+set; any non-zero F1 adds); do not emit classes never seen in the samples unless a detector is reliable (an absent
+class that we predict adds a zero to the macro average).
